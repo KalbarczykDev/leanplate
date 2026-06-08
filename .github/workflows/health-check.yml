@@ -1,0 +1,18 @@
+# .github/workflows/health-check.yml
+name: Health Check
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl health endpoint
+        run: |
+          code="$(curl -s -o /tmp/body -w '%{http_code}' "${{ secrets.HEALTH_URL }}")"
+          cat /tmp/body
+          echo
+          test "$code" = "200"

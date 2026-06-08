@@ -1,76 +1,36 @@
 # Leanplate
 
-A levelsio-style starter for shipping small, profitable apps fast. Raw PHP, SQLite, and a single VPS — no framework, no build step, no Docker.
+A levelsio-style PHP micro-stack template. Raw PHP, SQLite, no framework, no build step. Clone it, copy a config file, and you have passwordless auth, Stripe payments, and a deploy pipeline ready to go.
 
-**Stack:** PHP 8.3 · SQLite (WAL) · raw CSS · Resend (email) · Stripe (payments) · nginx + PHP-FPM · GitHub Actions deploy · Cloudflare
+## What it is
 
-## What you get out of the box
+A starting point for a small subscription web app that one person can run on one cheap VPS. It favors plain functions, prepared statements, and boring infrastructure over abstractions. Everything you need fits in a handful of files you can read in an afternoon.
 
-- **Passwordless auth** — magic links + Google OAuth, merged on verified email
-- **Payments** — Stripe Checkout + signed webhook handler
-- **Email** — Resend via curl (logs locally in dev, no account needed to start)
-- **Backups** — consistent SQLite snapshots with rotation
-- **Health check + error alerts** — know when something breaks
-- **One-command deploy** — `git push` to master ships it
+## Stack
 
-## Quick start (local)
+- PHP 8.3+
+- SQLite
+- CSS
+- Email: pluggable transport (Mailhog, Resend in prod)
+- Payments: Stripe Checkout
+- Auth: passwordless (magic links and Google OAuth),
+- Deploy: Hetzner VPS , nginx plus PHP-FPM plus certbot, Cloudflare in front
+- CI: GitHub Actions plus rsync
+
+## Quick start
 
 ```bash
-# 1. Use this template on GitHub ("Use this template" button), then:
-git clone https://github.com/YOU/your-app.git
-cd your-app
-
-# 2. Create your local config (secrets blank is fine for dev)
 cp src/config.example.php src/config.php
-
-# 3. Run it
-cd public
-php -S 127.0.0.1:8000
+cd public && php -S 127.0.0.1:8000
 ```
 
-Open http://localhost:8000. To test login: submit your email, then check `logs/mail.log` for the magic link (in dev, emails are logged instead of sent).
+Open http://127.0.0.1:8000. With the default config, email is written to `logs/mail.log` (so magic links work without any mail server), and the Stripe and Google buttons stay hidden until you add keys. See `docs/DEVELOPMENT.md` to wire up Mailpit and a mock OAuth server.
 
-## Project structure
+## Docs
 
-```
-.
-├── public/          # web root — nginx serves ONLY this
-│   ├── index.php        landing page
-│   ├── login.php        magic-link request + verify
-│   ├── google-*.php     OAuth start + callback
-│   ├── dashboard.php    example protected page
-│   ├── checkout.php     Stripe redirect
-│   ├── webhook.php      Stripe webhook receiver
-│   ├── logout.php
-│   ├── health.php       uptime endpoint
-│   └── style.css
-├── src/             # backend, never served directly
-│   ├── bootstrap.php    require this first from every page
-│   ├── config.php       YOUR SECRETS (gitignored)
-│   ├── config.example.php
-│   ├── db.php           SQLite connection + schema
-│   ├── auth.php         sessions, magic links, Google OAuth
-│   ├── mail.php         Resend + error alerts
-│   └── stripe.php       checkout + webhook verification
-├── data/            # app.db lives here (gitignored)
-├── logs/            # gitignored
-├── scripts/         # backup.sh, restore-test.sh
-├── deploy/          # nginx.conf sample
-└── docs/            # DEVELOPMENT.md, DEPLOY.md
-```
-
-## Philosophy
-
-- **Read every line.** No framework magic. The whole app fits in your head.
-- **One box.** SQLite means no separate DB server to run or back up.
-- **No build step.** Edit a `.php` file, refresh. Edit `.css`, refresh.
-- **Secrets stay off git.** `src/config.php` is never committed or deployed by CI — you put it on the server once by hand.
-
-## Documentation
-
-- **[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)** — local workflow, adding pages and features, conventions
-- **[docs/DEPLOY.md](docs/DEPLOY.md)** — provisioning a Hetzner VPS (firewall + SSH hardening), nginx, TLS, deploy, and backups
+- `docs/DEVELOPMENT.md` for local setup, conventions, and how to add a page or table.
+- `docs/DEPLOY.md` for provisioning a Hetzner box and shipping to it.
 
 ## License
 
-MIT — do whatever you want.
+MIT. Use it, change it, ship it.

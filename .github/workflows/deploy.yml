@@ -1,0 +1,36 @@
+name: Deploy
+
+  on:
+    push:
+      branches: [master]
+
+  jobs:
+    deploy:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Set up SSH
+          run: |
+            mkdir -p ~/.ssh
+            echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+            ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+        - name: Rsync to server
+          run: |
+            rsync -az --delete \
+              --exclude='.git/' \
+              --exclude='data/' \
+              --exclude='logs/' \
+              --exclude='backups/' \
+              --exclude='src/config.php' \
+              -e "ssh -i ~/.ssh/id_ed25519" \
+              ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST
+  }}:/var/www/app/"
+
+        - name: Reload PHP-FPM
+          run: |
+            ssh -i ~/.ssh/id_ed25519 "${{ secrets.SSH_USER }}@${{
+  secrets.SSH_HOST }}" \
+              "sudo systemctl reload php8.3-fpm || true"

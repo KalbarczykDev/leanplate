@@ -1,0 +1,21 @@
+# .gitignore
+/src/config.php
+/data/
+/logs/
+/backups/
+
+.DS_Store
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# secrets / keys
+deploy_key
+deploy_key.pub
+*.pem
+.env
+
+# editor / os
+.idea/
+.vscode/
+*.swp
