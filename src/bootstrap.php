@@ -3,18 +3,17 @@
 // Single entry point for every public page: require __DIR__ .'/../src/bootstrap.php';
 declare(strict_types=1);
 
-// config() loads src/config.php once and applies env overrides for Google endpoints.
+// config() loads src/config/config.php once and applies env overrides for Google endpoints.
 function config(): array
 {
     static $config = null;
     if ($config !== null) {
         return $config;
     }
-    $path = __DIR__ . '/config.php';
+    $path = __DIR__ . '/config/config.php';
     if (!is_file($path)) {
         http_response_code(500);
-        exit('Missing src/config.php. Copy src/config.example.php to
-  src/config.php.');
+        exit('Missing src/config/config.php. Copy src/config/config.example.php to src/config/config.php.');
     }
     $config = require $path;
     // Env overrides let mock-oauth2-server replace Google endpoints locally.
@@ -60,10 +59,11 @@ session_set_cookie_params([
 ]);
 session_start();
 
-require __DIR__ . '/db.php';
-require __DIR__ . '/mail.php';
-require __DIR__ . '/auth.php';
-require __DIR__ . '/stripe.php';
+require __DIR__ . '/lib/db.php';
+require __DIR__ . '/lib/mail.php';
+require __DIR__ . '/lib/layout.php';
+require __DIR__ . '/app/auth.php';
+require __DIR__ . '/app/stripe.php';
 
 // Throttled alert on fatal errors so prod incidents page someone without spamming.
 function alert_fatal(array $err): void

@@ -1,5 +1,5 @@
 # .gitignore
-/src/config.php
+/src/config/config.php
 /data/
 /logs/
 /backups/
@@ -20,5 +20,6 @@ deploy_key.pub
 .vscode/
 *.swp
 
-#ai 
+#ai
 playwright.mcp
+docs/superpowers/

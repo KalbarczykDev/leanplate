@@ -24,7 +24,7 @@ name: Deploy
               --exclude='data/' \
               --exclude='logs/' \
               --exclude='backups/' \
-              --exclude='src/config.php' \
+              --exclude='src/config/config.php' \
               -e "ssh -i ~/.ssh/id_ed25519" \
               ./ "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST
   }}:/var/www/app/"
