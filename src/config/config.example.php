@@ -5,8 +5,8 @@ return [
       'base_url' => 'http://127.0.0.1:8000', // no trailing slash
 
       // storage paths (defaults are fine for local dev)
-      'db_path'  => __DIR__ . '/../data/app.sqlite',
-      'log_path' => __DIR__ . '/../logs/mail.log',
+      'db_path'  => __DIR__ . '/../../data/app.sqlite',
+      'log_path' => __DIR__ . '/../../logs/mail.log',
 
       // mail: smtp (Mailpit/SMTP) | resend (prod) | log (fallback)
       'mail_transport' => 'smtp',
@@ -33,4 +33,14 @@ return [
 
       // ops: where throttled fatal-error alerts go (blank disables)
       'alert_email' => '',
+
+      // social/seo: default Open Graph image (site-relative or absolute URL)
+      'og_default_image' => '/assets/og-default.png',
+
+      // analytics: paste a full <script>…</script> snippet; blank emits nothing
+      'analytics_snippet' => '',
+      // footer version string; blank hides it
+      'app_version' => '0.0.1',
+      // where feedback notifications go; blank saves feedback without emailing
+      'admin_email' => '',
   ];
