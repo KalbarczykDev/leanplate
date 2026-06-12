@@ -48,4 +48,21 @@ function db_migrate(PDO $pdo): void
         message    TEXT NOT NULL,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )");
+    $pdo->exec("CREATE TABLE IF NOT EXISTS subscribers (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        email      TEXT NOT NULL UNIQUE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )");
+
+    // Add users.display_name once. Guard with PRAGMA so re-runs are safe.
+    $hasDisplayName = false;
+    foreach ($pdo->query("PRAGMA table_info(users)") as $col) {
+        if (($col['name'] ?? '') === 'display_name') {
+            $hasDisplayName = true;
+            break;
+        }
+    }
+    if (!$hasDisplayName) {
+        $pdo->exec("ALTER TABLE users ADD COLUMN display_name TEXT");
+    }
 }

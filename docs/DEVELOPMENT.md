@@ -15,7 +15,7 @@ Note: clean URLs (`/auth/login`) are served by nginx in production. The built-in
 
 ## The bootstrap-first rule
 
-Every page starts with exactly one line — the bootstrap require, relative to the page's depth:
+Every page starts with exactly one line - the bootstrap require, relative to the page's depth:
 
 ```php
 require __DIR__ . '/../src/bootstrap.php';      // root page: public/index.php
@@ -91,6 +91,18 @@ layout_header('Settings');                        // shared HTML chrome
 
 `layout_header()`/`layout_footer()` live in `src/lib/layout.php` and wrap every HTML page, so individual pages only emit their own content.
 
+## Shareable URL state
+
+Interactive pages (search, filters, sorting, pagination) must keep their state
+in the query string so any view is bookmarkable and shareable. Read state from
+`$_GET`, render inputs/links pre-filled, and never hold view state only in the
+session. Use `url_with(['sort' => 'new'])` to build links that change one
+parameter while preserving the rest:
+
+```php
+<a href="<?= htmlspecialchars(url_with(['sort' => 'new'])) ?>">Newest</a>
+```
+
 ## Escaping
 
 Every dynamic value printed into HTML goes through `htmlspecialchars()`. No exceptions. The default flags in PHP 8.3 already handle quotes and treat the string as UTF-8.
@@ -112,7 +124,7 @@ Google OAuth:
 ## The add-a-feature loop
 
 1. Add or change a table in `db_migrate()` if needed.
-2. Add a function to the right file — reusable infra in `src/lib/` (`db.php`, `mail.php`, `layout.php`), app domain in `src/app/` (`auth.php`, `stripe.php`), or a new file required from `bootstrap.php`.
+2. Add a function to the right file - reusable infra in `src/lib/` (`db.php`, `mail.php`, `layout.php`), app domain in `src/app/` (`auth.php`, `stripe.php`), or a new file required from `bootstrap.php`.
 3. Add or edit a page in `public/` (grouped under `auth/`, `billing/`, `app/`), starting with the bootstrap require.
 4. Validate input, write through prepared statements, escape all output.
 5. Click through it locally with mail going to `logs/mail.log`.

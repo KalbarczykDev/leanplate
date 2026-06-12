@@ -69,3 +69,68 @@ $secret): bool
     }
     return false;
 }
+
+// Create a Stripe Billing Portal session (cancel, card, invoices). Null when
+// the user has no Stripe customer yet or Stripe is unconfigured.
+function stripe_portal_url(array $user): ?string
+{
+    $c = config();
+    if (empty($user['stripe_id']) || !stripe_enabled()) {
+        return null;
+    }
+    $fields = [
+        'customer'   => $user['stripe_id'],
+        'return_url' => $c['base_url'] . '/app',
+    ];
+    $ch = curl_init('https://api.stripe.com/v1/billing_portal/sessions');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => http_build_query($fields),
+        CURLOPT_USERPWD        => $c['stripe_secret_key'] . ':',
+        CURLOPT_TIMEOUT        => 20,
+    ]);
+    $resp = curl_exec($ch);
+    curl_close($ch);
+    if ($resp === false) {
+        return null;
+    }
+    $data = json_decode($resp, true);
+    return $data['url'] ?? null;
+}
+
+// Cancel any active subscriptions for the user's Stripe customer. No-op when
+// Stripe is unconfigured or the user has no customer id.
+function stripe_cancel_subscription(array $user): void
+{
+    $c = config();
+    if (empty($user['stripe_id']) || !stripe_enabled()) {
+        return;
+    }
+    $ch = curl_init('https://api.stripe.com/v1/subscriptions?customer=' . urlencode((string)$user['stripe_id']) . '&status=active');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => $c['stripe_secret_key'] . ':',
+        CURLOPT_TIMEOUT        => 20,
+    ]);
+    $resp = curl_exec($ch);
+    curl_close($ch);
+    if ($resp === false) {
+        return;
+    }
+    $list = json_decode($resp, true);
+    foreach ($list['data'] ?? [] as $sub) {
+        if (empty($sub['id'])) {
+            continue;
+        }
+        $del = curl_init('https://api.stripe.com/v1/subscriptions/' . $sub['id']);
+        curl_setopt_array($del, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CUSTOMREQUEST  => 'DELETE',
+            CURLOPT_USERPWD        => $c['stripe_secret_key'] . ':',
+            CURLOPT_TIMEOUT        => 20,
+        ]);
+        curl_exec($del);
+        curl_close($del);
+    }
+}

@@ -56,6 +56,18 @@ function require_login(): array
     return $u;
 }
 
+// Like require_login(), but a logged-in free user is sent to an upgrade prompt.
+// Wrap pro-only pages with this.
+function require_pro(): array
+{
+    $u = require_login();
+    if (($u['plan'] ?? 'free') !== 'pro') {
+        header('Location: /app?upgrade=1');
+        exit;
+    }
+    return $u;
+}
+
 function logout_user(): void
 {
     $_SESSION = [];

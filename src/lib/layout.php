@@ -47,7 +47,7 @@ function layout_footer(): void
     $cfg     = config();
     $version = trim((string)($cfg['app_version'] ?? ''));
     $ver     = $version !== '' ? '<p class="version">v' . htmlspecialchars($version) . '</p>' : '';
-    // Trusted operator config (GA/Plausible/etc.) — intentionally not escaped.
+    // Trusted operator config (GA/Plausible/etc.) - intentionally not escaped.
     $snippet = (string)($cfg['analytics_snippet'] ?? '');
     echo <<<HTML
     </main>
@@ -60,4 +60,30 @@ function layout_footer(): void
 </html>
 
 HTML;
+}
+
+// Reusable "upgrade to Pro" nudge. Hidden when Stripe is unconfigured.
+function upgrade_prompt(): void
+{
+    if (!stripe_enabled()) {
+        return;
+    }
+    echo '<div class="upgrade">'
+       . '<p>This feature needs Pro.</p>'
+       . '<p><a class="btn" href="/billing/checkout">Upgrade to Pro</a></p>'
+       . '</div>';
+}
+
+// Build a URL that merges $params into the CURRENT query string, so filter/sort
+// links preserve existing state. Returns path + query, URL-encoded.
+/**
+ * @param array<string, scalar> $params
+ */
+function url_with(array $params): string
+{
+    $uri  = (string)($_SERVER['REQUEST_URI'] ?? '/');
+    $path = parse_url($uri, PHP_URL_PATH) ?: '/';
+    parse_str((string)parse_url($uri, PHP_URL_QUERY), $current);
+    $query = http_build_query(array_merge($current, $params));
+    return $query === '' ? $path : $path . '?' . $query;
 }

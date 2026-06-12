@@ -11,10 +11,11 @@ layout_header('Your app');
     <?php elseif ($status === 'cancel'): ?>
         <p class="notice">Checkout canceled.</p>
     <?php endif; ?>
+    <?php if (isset($_GET['upgrade'])): upgrade_prompt(); endif; ?>
     <p>Signed in as <strong><?= htmlspecialchars($user['email']) ?></strong>.</p>
     <p>Plan: <strong><?= htmlspecialchars($user['plan']) ?></strong></p>
     <?php if ($user['plan'] === 'free' && stripe_enabled()): ?>
         <p><a class="btn" href="/billing/checkout">Upgrade to Pro</a></p>
     <?php endif; ?>
-    <p><a href="/auth/logout">Log out</a></p>
+    <p><a href="/account">Account</a> · <?php if (stripe_enabled() && !empty($user['stripe_id'])): ?><a href="/billing/portal">Manage billing</a> · <?php endif; ?><a href="/auth/logout">Log out</a></p>
 <?php layout_footer(); ?>
