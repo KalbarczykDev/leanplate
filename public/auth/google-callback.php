@@ -1,10 +1,10 @@
 <?php
 
-// public/google-callback.php
-require __DIR__ . '/../src/bootstrap.php';
+// public/auth/google-callback.php
+require __DIR__ . '/../../src/bootstrap.php';
 
 if (!google_enabled()) {
-    header('Location: /login.php');
+    header('Location: /auth/login');
     exit;
 }
 
@@ -38,5 +38,5 @@ if (!$info || empty($info['email']) || !filter_var($info['email_verified']
 }
 
 login_user($info['email']);
-header('Location: /dashboard.php');
+header('Location: /app');
 exit;

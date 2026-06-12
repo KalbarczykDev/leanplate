@@ -1,10 +1,10 @@
- <?php
-require __DIR__ . '/../src/bootstrap.php';
+<?php
+require __DIR__ . '/../../src/bootstrap.php';
 
 $user = require_login();
 
 if (!stripe_enabled()) {
-    header('Location: /dashboard.php');
+    header('Location: /app');
     exit;
 }
 

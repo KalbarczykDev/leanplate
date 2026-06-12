@@ -20,7 +20,7 @@ A starting point for a small subscription web app that one person can run on one
 ## Quick start
 
 ```bash
-cp src/config.example.php src/config.php
+cp src/config/config.example.php src/config/config.php
 cd public && php -S 127.0.0.1:8000
 ```
 
@@ -30,6 +30,10 @@ Open http://127.0.0.1:8000. With the default config, email is written to `logs/m
 
 - `docs/DEVELOPMENT.md` for local setup, conventions, and how to add a page or table.
 - `docs/DEPLOY.md` for provisioning a Hetzner box and shipping to it.
+
+## Credits
+
+Feature set and philosophy inspired by Pieter Levels' book *MAKE* (https://readmake.com).
 
 ## License
 

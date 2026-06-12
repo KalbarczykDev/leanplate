@@ -1,9 +1,9 @@
 <?php
 
-require __DIR__ . '/../src/bootstrap.php';
+require __DIR__ . '/../../src/bootstrap.php';
 
 if (!google_enabled()) {
-    header('Location: /login.php');
+    header('Location: /auth/login');
     exit;
 }
 // CSRF: random state echoed back by the provider and checked in the callback.

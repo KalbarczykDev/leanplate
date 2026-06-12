@@ -16,10 +16,8 @@ function stripe_create_checkout(array $user): ?string
     $c      = config();
     $fields = [
         'mode'                  => 'subscription',
-        'success_url'           => $c['base_url'] .
-  '/dashboard.php?checkout=success',
-        'cancel_url'            => $c['base_url'] .
-  '/dashboard.php?checkout=cancel',
+        'success_url'           => $c['base_url'] . '/app?checkout=success',
+        'cancel_url'            => $c['base_url'] . '/app?checkout=cancel',
         'customer_email'        => $user['email'],
         'client_reference_id'   => (string)$user['id'], // maps the webhook back to our user
         'line_items[0][price]'  => $c['stripe_price_id'],

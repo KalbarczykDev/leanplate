@@ -61,19 +61,42 @@ sudo chown -R deploy:deploy /var/www/app
 mkdir -p /var/www/app/data /var/www/app/logs /var/www/app/backups
 ```
 
-The rsync deploy will fill in `public/`, `src/`, `scripts/`, and the rest. `data/`, `logs/`, `backups/`, and `src/config.php` are excluded from rsync, so create them on the server and they survive every deploy.
+The rsync deploy will fill in `public/`, `src/`, `scripts/`, and the rest. `data/`, `logs/`, `backups/`, and `src/config/config.php` are excluded from rsync, so create them on the server and they survive every deploy.
 
 ## 7. nginx vhost
 
-Copy `deploy/nginx.conf` to the server, set `server_name` to your domain, then enable it:
+Copy `deploy/nginx.site.conf` to the server, set `server_name` to your domain, then enable it:
 
 ```bash
-sudo cp /var/www/app/deploy/nginx.conf /etc/nginx/sites-available/app
+sudo cp /var/www/app/deploy/nginx.site.conf /etc/nginx/sites-available/app
 sudo ln -s /etc/nginx/sites-available/app /etc/nginx/sites-enabled/app
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+### Running multiple sites on one server
+
+nginx routes by `server_name`, so each site is its own config file:
+
+1. Copy `deploy/nginx.site.conf` to `/etc/nginx/sites-available/<domain>`, set its
+   `server_name` and `root` (`/var/www/<site>/public`), symlink into
+   `sites-enabled`, `nginx -t`, reload.
+2. Give each site its own PHP-FPM pool so sites are isolated in user, opcache,
+   and resource limits. Create `/etc/php/8.3/fpm/pool.d/<site>.conf`:
+
+   ```ini
+   [mysite]
+   user = mysite
+   group = mysite
+   listen = /run/php/mysite.sock
+   pm = ondemand
+   pm.max_children = 5
+   ```
+
+   Then set that site's `fastcgi_pass unix:/run/php/mysite.sock;`.
+3. Deploy each app to its own directory (`/var/www/<site>`) with its own
+   workflow target.
 
 ## 8. TLS with certbot
 
@@ -86,13 +109,13 @@ certbot adds the `listen 443` and certificate lines to your vhost and sets up au
 
 ## 9. Create the config by hand
 
-Secrets never go through git. Create `src/config.php` directly on the server, starting from the example, and set `env` to `prod`, the real `base_url`, your Resend key, Stripe keys, and Google credentials.
+Secrets never go through git. Create `src/config/config.php` directly on the server, starting from the example, and set `env` to `prod`, the real `base_url`, your Resend key, Stripe keys, and Google credentials.
 
 ```bash
-cp /var/www/app/src/config.example.php /var/www/app/src/config.php
-nano /var/www/app/src/config.php
-chmod 640 /var/www/app/src/config.php
-sudo chown deploy:www-data /var/www/app/src/config.php
+cp /var/www/app/src/config/config.example.php /var/www/app/src/config/config.php
+nano /var/www/app/src/config/config.php
+chmod 640 /var/www/app/src/config/config.php
+sudo chown deploy:www-data /var/www/app/src/config/config.php
 ```
 
 Mode 640 with group `www-data` lets PHP-FPM read it but keeps it off-limits to other users.
@@ -125,7 +148,7 @@ In the GitHub repo settings, add Actions secrets:
 - `SSH_HOST`: the server IP or hostname
 - `SSH_USER`: `deploy`
 - `SSH_KEY`: the contents of the private `deploy_key`
-- `HEALTH_URL`: `https://example.com/health.php` (used by the health-check workflow)
+- `HEALTH_URL`: `https://example.com/health` (used by the health-check workflow)
 
 Allow `deploy` to reload PHP-FPM without a password so the workflow's reload step works. Run `sudo visudo` and add:
 
@@ -135,16 +158,16 @@ deploy ALL=(ALL) NOPASSWD: /bin/systemctl reload php8.3-fpm
 
 ## 12. First deploy and smoke test
 
-Push to `master`. The `deploy.yml` workflow rsyncs the tree (excluding `.git/`, `data/`, `logs/`, `backups/`, and `src/config.php`) and reloads PHP-FPM. Then check health:
+Push to `master`. The `deploy.yml` workflow rsyncs the tree (excluding `.git/`, `data/`, `logs/`, `backups/`, and `src/config/config.php`) and reloads PHP-FPM. Then check health:
 
 ```bash
-curl https://example.com/health.php
+curl https://example.com/health
 # {"status":"ok","time":"..."}
 ```
 
 ## 13. Stripe webhook
 
-In the Stripe dashboard, add a webhook endpoint pointing at `https://example.com/webhook.php` and subscribe to `checkout.session.completed` and `customer.subscription.deleted`. Copy the signing secret into `stripe_webhook_secret` in `src/config.php`. The endpoint verifies the signature by hand (HMAC-SHA256 of `{timestamp}.{body}`, 5-minute replay tolerance), so the secret must match exactly. Send a test event from the dashboard and confirm a user's plan flips to `pro`.
+In the Stripe dashboard, add a webhook endpoint pointing at `https://example.com/billing/webhook` and subscribe to `checkout.session.completed` and `customer.subscription.deleted`. Copy the signing secret into `stripe_webhook_secret` in `src/config/config.php`. The endpoint verifies the signature by hand (HMAC-SHA256 of `{timestamp}.{body}`, 5-minute replay tolerance), so the secret must match exactly. Send a test event from the dashboard and confirm a user's plan flips to `pro`.
 
 ## 14. Backups and restore test
 
@@ -171,11 +194,11 @@ Install a cron for the `deploy` user (`crontab -e`):
 - [ ] ufw allows only 22, 80, 443
 - [ ] nginx vhost enabled, `nginx -t` passes
 - [ ] certbot TLS issued, renew dry run passes
-- [ ] `src/config.php` created by hand, mode 640, `env` set to `prod`
+- [ ] `src/config/config.php` created by hand, mode 640, `env` set to `prod`
 - [ ] `data/` and `logs/` owned by `www-data`
 - [ ] GitHub secrets set (`SSH_HOST`, `SSH_USER`, `SSH_KEY`, `HEALTH_URL`)
 - [ ] Dedicated deploy key in `authorized_keys`
 - [ ] `deploy` may reload php8.3-fpm without a password
-- [ ] First deploy green, `/health.php` returns ok
+- [ ] First deploy green, `/health` returns ok
 - [ ] Stripe webhook added and test event upgrades a user
 - [ ] Backup and restore-test crons installed, backups copied off-box

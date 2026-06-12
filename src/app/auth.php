@@ -50,7 +50,7 @@ function require_login(): array
 {
     $u = current_user();
     if (!$u) {
-        header('Location: /login.php');
+        header('Location: /auth/login');
         exit;
     }
     return $u;
@@ -121,7 +121,7 @@ function google_auth_url(string $state): string
     $c = config();
     $params = http_build_query([
       'client_id' => $c['google_client_id'],
-    'redirect_uri' => $c['base_url'] . '/google-callback.php',
+    'redirect_uri' => $c['base_url'] . '/auth/google-callback',
     'response_type' => 'code',
     'scope' => 'openid email',
     'state' => $state,
@@ -137,7 +137,7 @@ function google_exchange_code(string $code): ?array
       'code' => $code,
       'client_id' => $c['google_client_id'],
       'client_secret' => $c['google_client_secret'],
-      'redirect_uri' => $c['base_url'] . '/google-callback.php',
+      'redirect_uri' => $c['base_url'] . '/auth/google-callback',
       'grant_type' => 'authorization_code',
     ]);
     $ch = curl_init($c['google_token_endpoint']);
