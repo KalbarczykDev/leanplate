@@ -19,3 +19,6 @@ deploy_key.pub
 .idea/
 .vscode/
 *.swp
+
+#ai 
+playwright.mcp

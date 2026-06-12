@@ -9,7 +9,7 @@ return [
       'log_path' => __DIR__ . '/../logs/mail.log',
 
       // mail: smtp (Mailpit/SMTP) | resend (prod) | log (fallback)
-      'mail_transport' => 'log',
+      'mail_transport' => 'smtp',
       'mail_from'      => 'no-reply@example.com',
       'smtp_host'      => '127.0.0.1', // Mailpit listens here
       'smtp_port'      => 1025,

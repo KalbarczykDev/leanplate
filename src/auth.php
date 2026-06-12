@@ -28,7 +28,7 @@ function login_user(string $email): string
     //Regenerate on privilege change to block session fixation.
     session_regenerate_id(true);
     $_SESSION['uid'] = (int)$user['id'];
-    return $user;
+    return (string) $user['email'];
 }
 
 function current_user(): ?array

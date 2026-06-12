@@ -63,6 +63,7 @@ session_start();
 require __DIR__ . '/db.php';
 require __DIR__ . '/mail.php';
 require __DIR__ . '/auth.php';
+require __DIR__ . '/stripe.php';
 
 // Throttled alert on fatal errors so prod incidents page someone without spamming.
 function alert_fatal(array $err): void

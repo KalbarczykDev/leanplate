@@ -7,7 +7,7 @@ function send_mail(string $to, string $subject, string $body): bool
 {
     $transport = config()['mail_transport'] ?? 'log';
     return match ($transport) {
-        'smpt' => mail_smtp($to, $subject, $body),
+        'smtp' => mail_smtp($to, $subject, $body),
         'resend' => mail_resend($to, $subject, $body),
         default => mail_log($to, $subject, $body)
     };
@@ -21,7 +21,6 @@ function mail_log(string $to, string $subject, string $body): bool
         gmdate('c'),
         $to,
         $subject,
-        str_repeat('-', 40),
         $body
     );
 
