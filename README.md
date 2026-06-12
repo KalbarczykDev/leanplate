@@ -11,7 +11,7 @@ A starting point for a small subscription web app that one person can run on one
 - PHP 8.3+
 - SQLite
 - CSS
-- Email: pluggable transport (Mailhog, Resend in prod)
+- Email: pluggable transport (log file in dev, Resend in prod)
 - Payments: Stripe Checkout
 - Auth: passwordless (magic links and Google OAuth),
 - Deploy: Hetzner VPS , nginx plus PHP-FPM plus certbot, Cloudflare in front
@@ -24,7 +24,7 @@ cp src/config/config.example.php src/config/config.php
 cd public && php -S 127.0.0.1:8000
 ```
 
-Open http://127.0.0.1:8000. With the default config, email is written to `logs/mail.log` (so magic links work without any mail server), and the Stripe and Google buttons stay hidden until you add keys. See `docs/DEVELOPMENT.md` to wire up Mailpit and a mock OAuth server.
+Open http://127.0.0.1:8000. With the default config, email is written to `logs/mail.log` (so magic links work without any mail server), and the Stripe and Google buttons stay hidden until you add keys.
 
 ## Docs
 

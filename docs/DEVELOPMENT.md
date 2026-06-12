@@ -43,8 +43,6 @@ If you forget this line, nothing else will be defined. There is no autoloader by
 
 This means a brand-new clone runs end to end with no external services.
 
-The three Google endpoints can be overridden by environment variables (`GOOGLE_AUTH_ENDPOINT`, `GOOGLE_TOKEN_ENDPOINT`, `GOOGLE_USERINFO_ENDPOINT`). That is how you point OAuth at a local mock server without editing config.
-
 ## db() and prepared statements
 
 `db()` returns a single shared PDO connection (SQLite, WAL, busy_timeout 5000). Call it anywhere; it builds the connection and runs the schema on first use.
@@ -96,12 +94,7 @@ layout_header('Settings');                        // shared HTML chrome
 Interactive pages (search, filters, sorting, pagination) must keep their state
 in the query string so any view is bookmarkable and shareable. Read state from
 `$_GET`, render inputs/links pre-filled, and never hold view state only in the
-session. Use `url_with(['sort' => 'new'])` to build links that change one
-parameter while preserving the rest:
-
-```php
-<a href="<?= htmlspecialchars(url_with(['sort' => 'new'])) ?>">Newest</a>
-```
+session.
 
 ## Escaping
 
@@ -138,42 +131,6 @@ Google OAuth:
 - Keep comments short and about why, not what.
 - No em-dashes in code comments or docs.
 
-## Local tooling
+## Local email and OAuth
 
-### Mailpit (email)
-
-MailHog is dead; use Mailpit.
-
-```bash
-brew install mailpit
-mailpit            # SMTP on :1025, web UI on http://127.0.0.1:8025
-```
-
-Then in `src/config/config.php`:
-
-```php
-'mail_transport' => 'smtp',
-'smtp_host'      => '127.0.0.1',
-'smtp_port'      => 1025,
-```
-
-Sent mail shows up in the Mailpit UI instead of a real inbox.
-
-### mock-oauth2-server (Google login)
-
-Run a local OpenID provider in Docker:
-
-```bash
-docker run -p 8080:8080 ghcr.io/navikt/mock-oauth2-server:2.1.10
-```
-
-Point the app at it with environment variables when you start PHP:
-
-```bash
-GOOGLE_AUTH_ENDPOINT=http://127.0.0.1:8080/default/authorize \
-GOOGLE_TOKEN_ENDPOINT=http://127.0.0.1:8080/default/token \
-GOOGLE_USERINFO_ENDPOINT=http://127.0.0.1:8080/default/userinfo \
-php -S 127.0.0.1:8000 -t public
-```
-
-Set any non-blank `google_client_id` and `google_client_secret` in `src/config/config.php` so the button appears. The mock server accepts any login and returns a verified email, which is enough to exercise the whole flow.
+There is no local mail server or mock OAuth setup. In dev, `mail_transport = log` writes every email (including magic links) to `logs/mail.log`; `tail -f` it and click the link. To test Google login, use real Google credentials with `http://127.0.0.1:8000/auth/google-callback` added as an authorized redirect URI, or just test it on the deployed domain.

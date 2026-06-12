@@ -148,7 +148,6 @@ In the GitHub repo settings, add Actions secrets:
 - `SSH_HOST`: the server IP or hostname
 - `SSH_USER`: `deploy`
 - `SSH_KEY`: the contents of the private `deploy_key`
-- `HEALTH_URL`: `https://example.com/health` (used by the health-check workflow)
 
 Allow `deploy` to reload PHP-FPM without a password so the workflow's reload step works. Run `sudo visudo` and add:
 
@@ -164,6 +163,9 @@ Push to `master`. The `deploy.yml` workflow rsyncs the tree (excluding `.git/`, 
 curl https://example.com/health
 # {"status":"ok","time":"..."}
 ```
+
+For ongoing monitoring, point a free UptimeRobot (or similar) monitor at
+`https://example.com/health`. It alerts on downtime without any CI machinery.
 
 ## 13. Stripe webhook
 
@@ -196,7 +198,8 @@ Install a cron for the `deploy` user (`crontab -e`):
 - [ ] certbot TLS issued, renew dry run passes
 - [ ] `src/config/config.php` created by hand, mode 640, `env` set to `prod`
 - [ ] `data/` and `logs/` owned by `www-data`
-- [ ] GitHub secrets set (`SSH_HOST`, `SSH_USER`, `SSH_KEY`, `HEALTH_URL`)
+- [ ] GitHub secrets set (`SSH_HOST`, `SSH_USER`, `SSH_KEY`)
+- [ ] Uptime monitor (e.g. UptimeRobot) pointed at `/health`
 - [ ] Dedicated deploy key in `authorized_keys`
 - [ ] `deploy` may reload php8.3-fpm without a password
 - [ ] First deploy green, `/health` returns ok

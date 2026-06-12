@@ -26,7 +26,7 @@ PHP built-in server serves from `public/`. Sources (`src/`, `data/`,
 - Prepare statements with `?` placeholders. Never interpolate user input into SQL.
 - All dynamic output escaped via `htmlspecialchars()`. No exceptions.
 - POST redirect pattern: validate, write via prepared statement, `header('Location: ...')`, `exit`.
-- Keep interactive state (search/filter/sort) in the query string so URLs are shareable; build links with `url_with([...])` from `src/lib/layout.php`.
+- Keep interactive state (search/filter/sort) in the query string so URLs are shareable; read it from `$_GET` and render links/inputs pre-filled.
 
 ## Architecture
 
@@ -46,7 +46,7 @@ PHP built-in server serves from `public/`. Sources (`src/`, `data/`,
 | Pages     | `public/*` (grouped: `auth/`, `billing/`, `app/`)                            |
 
 Config degrades gracefully when keys are blank (mail goes to log, buttons
-hide).
+hide). Google OAuth endpoints are constants in `src/app/auth.php`.
 
 ## Adding a feature
 
@@ -63,6 +63,3 @@ hide).
 | `mail_transport` (or Resend key)       | Writes mail to `logs/mail.log`       |
 | `stripe_secret_key` / `stripe_price_id` | Hides upgrade button                 |
 | `google_client_id` / `google_client_secret` | Hides Google button              |
-
-Google OAuth endpoints can be overridden via `GOOGLE_AUTH_ENDPOINT`,
-`GOOGLE_TOKEN_ENDPOINT`, `GOOGLE_USERINFO_ENDPOINT` env vars.

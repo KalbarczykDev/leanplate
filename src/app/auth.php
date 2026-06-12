@@ -36,14 +36,9 @@ function current_user(): ?array
     if (empty($_SESSION['uid'])) {
         return null;
     }
-    static $cached = null;
-    if ($cached !== null && (int)$cached['id'] === (int)$_SESSION['uid']) {
-        return $cached;
-    }
     $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
     $stmt->execute([$_SESSION['uid']]);
-    $cached = $stmt->fetch() ?: null;
-    return $cached;
+    return $stmt->fetch() ?: null;
 }
 
 function require_login(): array
@@ -51,18 +46,6 @@ function require_login(): array
     $u = current_user();
     if (!$u) {
         header('Location: /auth/login');
-        exit;
-    }
-    return $u;
-}
-
-// Like require_login(), but a logged-in free user is sent to an upgrade prompt.
-// Wrap pro-only pages with this.
-function require_pro(): array
-{
-    $u = require_login();
-    if (($u['plan'] ?? 'free') !== 'pro') {
-        header('Location: /app?upgrade=1');
         exit;
     }
     return $u;
@@ -122,6 +105,10 @@ function verify_magic_link(string $token): ?string
 
 // --- google oauth ---
 
+const GOOGLE_AUTH_ENDPOINT     = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GOOGLE_TOKEN_ENDPOINT    = 'https://oauth2.googleapis.com/token';
+const GOOGLE_USERINFO_ENDPOINT = 'https://openidconnect.googleapis.com/v1/userinfo';
+
 function google_enabled(): bool
 {
     $c = config();
@@ -139,7 +126,7 @@ function google_auth_url(string $state): string
     'state' => $state,
     'access_type' => 'online',
   ]);
-    return $c['google_auth_endpoint'] . '?' . $params;
+    return GOOGLE_AUTH_ENDPOINT . '?' . $params;
 }
 
 function google_exchange_code(string $code): ?array
@@ -152,7 +139,7 @@ function google_exchange_code(string $code): ?array
       'redirect_uri' => $c['base_url'] . '/auth/google-callback',
       'grant_type' => 'authorization_code',
     ]);
-    $ch = curl_init($c['google_token_endpoint']);
+    $ch = curl_init(GOOGLE_TOKEN_ENDPOINT);
     curl_setopt_array($ch, [
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_POST => true,
@@ -170,8 +157,7 @@ function google_exchange_code(string $code): ?array
 
 function google_userinfo(string $accessToken): ?array
 {
-    $c = config();
-    $ch = curl_init($c['google_userinfo_endpoint']);
+    $ch = curl_init(GOOGLE_USERINFO_ENDPOINT);
     curl_setopt_array($ch, [
       CURLOPT_RETURNTRANSFER => true,
       CURLOPT_HTTPHEADER => [

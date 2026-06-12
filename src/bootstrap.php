@@ -3,7 +3,7 @@
 // Single entry point for every public page: require __DIR__ .'/../src/bootstrap.php';
 declare(strict_types=1);
 
-// config() loads src/config/config.php once and applies env overrides for Google endpoints.
+// config() loads src/config/config.php once.
 function config(): array
 {
     static $config = null;
@@ -16,14 +16,6 @@ function config(): array
         exit('Missing src/config/config.php. Copy src/config/config.example.php to src/config/config.php.');
     }
     $config = require $path;
-    // Env overrides let mock-oauth2-server replace Google endpoints locally.
-    foreach (['google_auth_endpoint', 'google_token_endpoint',
-  'google_userinfo_endpoint'] as $k) {
-        $env = getenv(strtoupper($k));
-        if ($env !== false && $env !== '') {
-            $config[$k] = $env;
-        }
-    }
     return $config;
 }
 

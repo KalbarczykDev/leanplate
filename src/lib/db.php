@@ -34,6 +34,7 @@ function db_migrate(PDO $pdo): void
     email TEXT NOT NULL UNIQUE,
     plan TEXT NOT NULL DEFAULT 'free',
     stripe_id TEXT,
+    display_name TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )");
     $pdo->exec("CREATE TABLE IF NOT EXISTS login_tokens (
@@ -53,16 +54,4 @@ function db_migrate(PDO $pdo): void
         email      TEXT NOT NULL UNIQUE,
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )");
-
-    // Add users.display_name once. Guard with PRAGMA so re-runs are safe.
-    $hasDisplayName = false;
-    foreach ($pdo->query("PRAGMA table_info(users)") as $col) {
-        if (($col['name'] ?? '') === 'display_name') {
-            $hasDisplayName = true;
-            break;
-        }
-    }
-    if (!$hasDisplayName) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN display_name TEXT");
-    }
 }
