@@ -16,12 +16,22 @@ function layout_header(string $title = 'Leanplate', string $description = '', st
     $d  = htmlspecialchars($description);
     $u  = htmlspecialchars($base . $path);
     $im = htmlspecialchars($img);
+
+    $user = current_user();
+    $nav  = $user
+        ? '<a href="/app">App</a><a href="/account">Account</a><a href="/auth/logout">Log out</a>'
+        : '<a href="/auth/login">Sign in</a>';
+
+    // Toast shown after the feedback modal posts (?fb=1 on any page).
+    $toast = isset($_GET['fb']) ? '<div class="toast" role="status">Thanks for the feedback.</div>' : '';
+
     echo <<<HTML
 <!doctype html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ff4d00">
     <title>$t</title>
     <meta name="description" content="$d">
     <meta property="og:title" content="$t">
@@ -34,9 +44,19 @@ function layout_header(string $title = 'Leanplate', string $description = '', st
     <meta name="twitter:description" content="$d">
     <meta name="twitter:image" content="$im">
     <link rel="icon" type="image/png" href="/assets/favicon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;600&display=swap">
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
+    <header class="site-header">
+        <div class="bar">
+            <a class="brand" href="/">Leanplate</a>
+            <nav class="site-nav">$nav</nav>
+        </div>
+    </header>
+    $toast
     <main class="container">
 
 HTML;
@@ -52,9 +72,22 @@ function layout_footer(): void
     echo <<<HTML
     </main>
     <footer class="site-footer">
-        <a href="/feedback">Feedback</a>
         $ver
     </footer>
+    <button class="fb-fab" type="button" onclick="document.getElementById('fb-modal').showModal()">Feedback</button>
+    <dialog id="fb-modal" class="modal">
+        <h2>Feedback</h2>
+        <form method="post" action="/feedback">
+            <label for="fb-message">What's on your mind?</label>
+            <textarea id="fb-message" name="message" required></textarea>
+            <label for="fb-email">Email (optional)</label>
+            <input id="fb-email" type="email" name="email" placeholder="you@example.com">
+            <div class="modal-actions" style="display:flex">
+                <button class="btn" type="submit">Send</button>
+                <button class="btn btn-secondary" type="button" onclick="this.closest('dialog').close()">Cancel</button>
+            </div>
+        </form>
+    </dialog>
     $snippet
 </body>
 </html>

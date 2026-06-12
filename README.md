@@ -21,7 +21,7 @@ A starting point for a small subscription web app that one person can run on one
 
 ```bash
 cp src/config/config.example.php src/config/config.php
-cd public && php -S 127.0.0.1:8000
+php -S 127.0.0.1:8000 -t public scripts/router.php
 ```
 
 Open http://127.0.0.1:8000. With the default config, email is written to `logs/mail.log` (so magic links work without any mail server), and the Stripe and Google buttons stay hidden until you add keys.

@@ -32,7 +32,6 @@ function stripe_create_checkout(array $user): ?string
         CURLOPT_TIMEOUT        => 20,
     ]);
     $resp = curl_exec($ch);
-    curl_close($ch);
     if ($resp === false) {
         return null;
     }
@@ -91,7 +90,6 @@ function stripe_portal_url(array $user): ?string
         CURLOPT_TIMEOUT        => 20,
     ]);
     $resp = curl_exec($ch);
-    curl_close($ch);
     if ($resp === false) {
         return null;
     }
@@ -114,7 +112,6 @@ function stripe_cancel_subscription(array $user): void
         CURLOPT_TIMEOUT        => 20,
     ]);
     $resp = curl_exec($ch);
-    curl_close($ch);
     if ($resp === false) {
         return;
     }
@@ -131,6 +128,5 @@ function stripe_cancel_subscription(array $user): void
             CURLOPT_TIMEOUT        => 20,
         ]);
         curl_exec($del);
-        curl_close($del);
     }
 }

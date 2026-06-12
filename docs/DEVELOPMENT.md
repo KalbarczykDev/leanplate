@@ -6,12 +6,12 @@ Local setup, conventions, and the loops you will repeat while building.
 
 ```bash
 cp src/config/config.example.php src/config/config.php
-cd public && php -S 127.0.0.1:8000
+php -S 127.0.0.1:8000 -t public scripts/router.php
 ```
 
 PHP's built-in server is enough for development. The web root is `public/`, so `src/`, `data/`, and `logs/` are never directly reachable. The SQLite file and log files are created on first request.
 
-Note: clean URLs (`/auth/login`) are served by nginx in production. The built-in server does not strip `.php`, so locally you reach grouped pages by their file path (`/auth/login.php`).
+`scripts/router.php` makes the built-in server behave like the nginx config: clean URLs (`/feedback`, `/auth/login`) resolve to their `.php` files and `/sitemap.xml` hits the generator, so every link works the same locally and in production.
 
 ## The bootstrap-first rule
 
@@ -111,8 +111,7 @@ Magic links:
 
 Google OAuth:
 
-- `auth/google-login.php` stores a random `state` in the session and redirects to the auth endpoint.
-- `auth/google-callback.php` checks `state` with `hash_equals`, exchanges the code, fetches userinfo, and logs in only if `email_verified` is truthy.
+- `auth/google.php` handles both ends of the flow. Without `?code` it stores a random `state` in the session and redirects to the auth endpoint; with `?code` it checks `state` with `hash_equals`, exchanges the code, fetches userinfo, and logs in only if `email_verified` is truthy.
 
 ## The add-a-feature loop
 
@@ -133,4 +132,27 @@ Google OAuth:
 
 ## Local email and OAuth
 
-There is no local mail server or mock OAuth setup. In dev, `mail_transport = log` writes every email (including magic links) to `logs/mail.log`; `tail -f` it and click the link. To test Google login, use real Google credentials with `http://127.0.0.1:8000/auth/google-callback` added as an authorized redirect URI, or just test it on the deployed domain.
+There is no local mail server or mock OAuth setup. In dev, `mail_transport = log` writes every email (including magic links) to `logs/mail.log`; `tail -f` it and click the link. To test Google login, use real Google credentials with `http://127.0.0.1:8000/auth/google` added as an authorized redirect URI, or just test it on the deployed domain.
+
+## Testing billing locally
+
+Use Stripe test mode plus the Stripe CLI (Stripe cannot reach 127.0.0.1, so the CLI forwards webhooks).
+
+1. Secret key: https://dashboard.stripe.com/test/apikeys → copy `sk_test_…` into `stripe_secret_key`.
+2. Price (creates the product inline; must be recurring, checkout uses `mode=subscription`):
+
+   ```bash
+   stripe prices create -d "product_data[name]=Pro" -d "unit_amount=900" -d "currency=usd" -d "recurring[interval]=month"
+   ```
+
+   Copy the `"id": "price_…"` into `stripe_price_id`.
+3. Forward webhooks and keep it running:
+
+   ```bash
+   stripe listen --forward-to 127.0.0.1:8000/billing/webhook
+   ```
+
+   It prints a `whsec_…` → `stripe_webhook_secret`.
+4. Sign in, click Upgrade to Pro, pay with card `4242 4242 4242 4242` (any future expiry/CVC). The forwarded `checkout.session.completed` flips the plan to `pro`.
+
+`stripe trigger checkout.session.completed` fakes the event without paying, but with a synthetic `client_reference_id`, so the plan of a real local user only flips on a real test checkout.

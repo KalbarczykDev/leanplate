@@ -9,11 +9,12 @@ SQLite, no framework, no build step. One-person SaaS in a handful of files.
 
 ```bash
 cp src/config/config.example.php src/config/config.php
-cd public && php -S 127.0.0.1:8000
+php -S 127.0.0.1:8000 -t public scripts/router.php
 ```
 
-PHP built-in server serves from `public/`. Sources (`src/`, `data/`,
-`logs/`) are never directly reachable.
+PHP built-in server serves from `public/`; `scripts/router.php` mimics
+nginx clean URLs so extensionless links work locally. Sources (`src/`,
+`data/`, `logs/`) are never directly reachable.
 
 - Run `phpstan analyse` before committing; keep it clean at level 5 (config in `phpstan.neon`).
 

@@ -1,10 +1,18 @@
 <?php
 
-// public/auth/google-callback.php
+// Start and callback in one file: no ?code means begin the flow.
 require __DIR__ . '/../../src/bootstrap.php';
 
 if (!google_enabled()) {
     header('Location: /auth/login');
+    exit;
+}
+
+if (!isset($_GET['code'])) {
+    // CSRF: random state echoed back by the provider and checked below.
+    $state = bin2hex(random_bytes(16));
+    $_SESSION['oauth_state'] = $state;
+    header('Location: ' . google_auth_url($state));
     exit;
 }
 
@@ -17,13 +25,7 @@ if ($state === '' || !hash_equals($expected, $state)) {
     exit('Invalid OAuth state.');
 }
 
-$code = (string)($_GET['code'] ?? '');
-if ($code === '') {
-    http_response_code(400);
-    exit('Missing authorization code.');
-}
-
-$tokens = google_exchange_code($code);
+$tokens = google_exchange_code((string)$_GET['code']);
 if (!$tokens) {
     http_response_code(502);
     exit('Token exchange failed.');

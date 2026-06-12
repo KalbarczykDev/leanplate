@@ -29,6 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 layout_header('Sign in');
 ?>
+    <p class="kicker">No passwords here</p>
     <h1>Sign in</h1>
     <?php if ($error): ?>
         <p class="error"><?= htmlspecialchars($error) ?></p>
@@ -36,14 +37,16 @@ layout_header('Sign in');
     <?php if ($sent): ?>
         <p class="notice">Check your email for a sign-in link.</p>
     <?php else: ?>
-        <form method="post" action="/auth/login">
-            <label for="email">Email</label>
-            <input id="email" type="email" name="email" required autofocus placeholder="you@example.com">
-            <button class="btn" type="submit">Send magic link</button>
-        </form>
-        <?php if (google_enabled()): ?>
-            <p class="or">or</p>
-            <p><a class="btn btn-secondary" href="/auth/google-login">Continue with Google</a></p>
-        <?php endif; ?>
+        <div class="card">
+            <form method="post" action="/auth/login">
+                <label for="email">Email</label>
+                <input id="email" type="email" name="email" required autofocus placeholder="you@example.com">
+                <button class="btn" type="submit">Send magic link</button>
+            </form>
+            <?php if (google_enabled()): ?>
+                <p class="or">or</p>
+                <p><a class="btn btn-secondary" href="/auth/google">Continue with Google</a></p>
+            <?php endif; ?>
+        </div>
     <?php endif; ?>
 <?php layout_footer(); ?>
