@@ -3,6 +3,7 @@ require __DIR__ . '/../src/bootstrap.php';
 
 // Email capture posts back to the landing page itself.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
     $email = filter_var(trim((string)($_POST['email'] ?? '')), FILTER_VALIDATE_EMAIL);
     if ($email) {
         // INSERT OR IGNORE: a duplicate email is a no-op, not an error.
@@ -13,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $user = current_user();
-$sub  = isset($_GET['sub']);
+$sub  = flash('sub');
 layout_header('Leanplate', 'A levelsio-style PHP micro-stack. SQLite, magic links, Stripe, one VPS, no framework.');
 ?>
     <p class="kicker">PHP micro-stack template</p>
@@ -43,6 +44,7 @@ layout_header('Leanplate', 'A levelsio-style PHP micro-stack. SQLite, magic link
         <?php else: ?>
             <div class="card">
                 <form method="post" action="/">
+                    <?= csrf_field() ?>
                     <label for="email">Get updates</label>
                     <input id="email" type="email" name="email" required placeholder="you@example.com">
                     <button class="btn btn-secondary" type="submit">Subscribe</button>

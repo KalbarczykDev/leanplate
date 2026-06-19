@@ -3,6 +3,9 @@
 // Stripe Checkout + webhook via raw curl. No SDK.
 declare(strict_types=1);
 
+// Reject webhooks whose signed timestamp is older than this, to limit replay.
+const STRIPE_WEBHOOK_TOLERANCE = 300; // 5 minutes
+
 function stripe_enabled(): bool
 {
     $c = config();
@@ -10,11 +13,33 @@ function stripe_enabled(): bool
   !empty($c['stripe_price_id']);
 }
 
+// One call to the Stripe REST API. Secret key is the basic-auth user.
+// Returns the decoded response, or null on transport failure.
+// $method: 'GET' | 'POST' | 'DELETE'. POST sends $fields as form-encoded body.
+function stripe_api(string $method, string $path, array $fields = []): ?array
+{
+    $opt = [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_USERPWD        => config()['stripe_secret_key'] . ':',
+        CURLOPT_TIMEOUT        => 20,
+    ];
+    if ($method === 'POST') {
+        $opt[CURLOPT_POST]       = true;
+        $opt[CURLOPT_POSTFIELDS] = http_build_query($fields);
+    } elseif ($method === 'DELETE') {
+        $opt[CURLOPT_CUSTOMREQUEST] = 'DELETE';
+    }
+    $ch = curl_init('https://api.stripe.com/v1/' . $path);
+    curl_setopt_array($ch, $opt);
+    $resp = curl_exec($ch);
+    return $resp === false ? null : json_decode($resp, true);
+}
+
 // Create a subscription Checkout Session, return its hosted URL.
 function stripe_create_checkout(array $user): ?string
 {
-    $c      = config();
-    $fields = [
+    $c    = config();
+    $data = stripe_api('POST', 'checkout/sessions', [
         'mode'                  => 'subscription',
         'success_url'           => $c['base_url'] . '/app?checkout=success',
         'cancel_url'            => $c['base_url'] . '/app?checkout=cancel',
@@ -22,20 +47,7 @@ function stripe_create_checkout(array $user): ?string
         'client_reference_id'   => (string)$user['id'], // maps the webhook back to our user
         'line_items[0][price]'  => $c['stripe_price_id'],
         'line_items[0][quantity]' => 1,
-    ];
-    $ch = curl_init('https://api.stripe.com/v1/checkout/sessions');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => http_build_query($fields),
-        CURLOPT_USERPWD        => $c['stripe_secret_key'] . ':', // secret key as basic-auth user
-        CURLOPT_TIMEOUT        => 20,
     ]);
-    $resp = curl_exec($ch);
-    if ($resp === false) {
-        return null;
-    }
-    $data = json_decode($resp, true);
     return $data['url'] ?? null;
 }
 
@@ -56,8 +68,8 @@ $secret): bool
     if (!$t || !$sigs) {
         return false;
     }
-    // Reject anything older than 5 minutes to limit replay.
-    if (abs(time() - (int)$t) > 300) {
+    // Reject anything too old to limit replay.
+    if (abs(time() - (int)$t) > STRIPE_WEBHOOK_TOLERANCE) {
         return false;
     }
     $expected = hash_hmac('sha256', $t . '.' . $payload, $secret);
@@ -77,23 +89,10 @@ function stripe_portal_url(array $user): ?string
     if (empty($user['stripe_id']) || !stripe_enabled()) {
         return null;
     }
-    $fields = [
+    $data = stripe_api('POST', 'billing_portal/sessions', [
         'customer'   => $user['stripe_id'],
         'return_url' => $c['base_url'] . '/app',
-    ];
-    $ch = curl_init('https://api.stripe.com/v1/billing_portal/sessions');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => http_build_query($fields),
-        CURLOPT_USERPWD        => $c['stripe_secret_key'] . ':',
-        CURLOPT_TIMEOUT        => 20,
     ]);
-    $resp = curl_exec($ch);
-    if ($resp === false) {
-        return null;
-    }
-    $data = json_decode($resp, true);
     return $data['url'] ?? null;
 }
 
@@ -101,32 +100,13 @@ function stripe_portal_url(array $user): ?string
 // Stripe is unconfigured or the user has no customer id.
 function stripe_cancel_subscription(array $user): void
 {
-    $c = config();
     if (empty($user['stripe_id']) || !stripe_enabled()) {
         return;
     }
-    $ch = curl_init('https://api.stripe.com/v1/subscriptions?customer=' . urlencode((string)$user['stripe_id']) . '&status=active');
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_USERPWD        => $c['stripe_secret_key'] . ':',
-        CURLOPT_TIMEOUT        => 20,
-    ]);
-    $resp = curl_exec($ch);
-    if ($resp === false) {
-        return;
-    }
-    $list = json_decode($resp, true);
+    $list = stripe_api('GET', 'subscriptions?customer=' . urlencode((string)$user['stripe_id']) . '&status=active');
     foreach ($list['data'] ?? [] as $sub) {
-        if (empty($sub['id'])) {
-            continue;
+        if (!empty($sub['id'])) {
+            stripe_api('DELETE', 'subscriptions/' . $sub['id']);
         }
-        $del = curl_init('https://api.stripe.com/v1/subscriptions/' . $sub['id']);
-        curl_setopt_array($del, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CUSTOMREQUEST  => 'DELETE',
-            CURLOPT_USERPWD        => $c['stripe_secret_key'] . ':',
-            CURLOPT_TIMEOUT        => 20,
-        ]);
-        curl_exec($del);
     }
 }

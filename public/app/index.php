@@ -13,7 +13,7 @@ layout_header('Your app');
     <?php elseif ($status === 'cancel'): ?>
         <p class="notice">Checkout canceled.</p>
     <?php endif; ?>
-    <?php if (isset($_GET['upgrade'])): upgrade_prompt(); endif; ?>
+    <?php if (flash('upgrade')): upgrade_prompt(); endif; ?>
 
     <ul class="manifest">
         <?php if ($name !== ''): ?>

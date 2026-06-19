@@ -4,9 +4,11 @@ require __DIR__ . '/../../src/bootstrap.php';
 $user = require_login();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // The delete form posts a "confirm" field; the profile form does not.
-    if (isset($_POST['confirm'])) {
-        if ($_POST['confirm'] !== 'DELETE') {
+    csrf_check();
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'delete') {
+        if (($_POST['confirm'] ?? '') !== 'DELETE') {
             header('Location: /account');
             exit;
         }
@@ -17,12 +19,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: /?deleted=1');
         exit;
     }
-    $name = trim((string)($_POST['display_name'] ?? ''));
-    db()->prepare('UPDATE users SET display_name = ? WHERE id = ?')->execute([$name, $user['id']]);
-    header('Location: /account?saved=1');
+
+    if ($action === 'save') {
+        $name = trim((string)($_POST['display_name'] ?? ''));
+        db()->prepare('UPDATE users SET display_name = ? WHERE id = ?')->execute([$name, $user['id']]);
+        header('Location: /account?saved=1');
+        exit;
+    }
+
+    header('Location: /account');
     exit;
 }
-$saved = isset($_GET['saved']);
+$saved = flash('saved');
 layout_header('Account');
 ?>
     <p class="kicker">Settings</p>
@@ -32,6 +40,8 @@ layout_header('Account');
     <?php endif; ?>
     <div class="card">
         <form method="post" action="/account">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="save">
             <label for="display_name">Display name</label>
             <input id="display_name" name="display_name" value="<?= htmlspecialchars((string)($user['display_name'] ?? '')) ?>">
             <label for="email">Email</label>
@@ -44,6 +54,8 @@ layout_header('Account');
         <h2>Delete account</h2>
         <p>This permanently deletes your account and cancels any subscription. It cannot be undone.</p>
         <form method="post" action="/account" onsubmit="return confirm('Delete your account permanently?');">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="delete">
             <label for="confirm">Type DELETE to confirm</label>
             <input id="confirm" name="confirm" autocomplete="off">
             <button class="btn btn-danger" type="submit">Delete my account</button>

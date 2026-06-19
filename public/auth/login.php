@@ -17,13 +17,15 @@ if (isset($_GET['token'])) {
 
 // Step 1: user asked for a link.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
     $email = filter_var(trim($_POST['email'] ?? ''), FILTER_VALIDATE_EMAIL);
     if (!$email) {
         $error = 'Enter a valid email address.';
     } else {
-        $token = create_magic_link($email);
-        $link  = config()['base_url'] . '/auth/login?token=' . urlencode($token);
-        send_mail($email, 'Your sign-in link', "Click to sign in:\n\n$link\n\nThis link expires in 15 minutes.");
+        $token   = create_magic_link($email);
+        $link    = config()['base_url'] . '/auth/login?token=' . urlencode($token);
+        $minutes = (int)(MAGIC_LINK_TTL / 60);
+        send_mail($email, 'Your sign-in link', "Click to sign in:\n\n$link\n\nThis link expires in $minutes minutes.");
         $sent = true;
     }
 }
@@ -39,6 +41,7 @@ layout_header('Sign in');
     <?php else: ?>
         <div class="card">
             <form method="post" action="/auth/login">
+                <?= csrf_field() ?>
                 <label for="email">Email</label>
                 <input id="email" type="email" name="email" required autofocus placeholder="you@example.com">
                 <button class="btn" type="submit">Send magic link</button>

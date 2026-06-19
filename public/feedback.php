@@ -7,6 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: /');
     exit;
 }
+csrf_check();
 
 $message = trim((string)($_POST['message'] ?? ''));
 $email   = filter_var(trim((string)($_POST['email'] ?? '')), FILTER_VALIDATE_EMAIL) ?: null;

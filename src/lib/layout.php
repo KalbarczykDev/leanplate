@@ -3,6 +3,14 @@
 // Shared HTML chrome. Plain functions, no template engine.
 declare(strict_types=1);
 
+// True when a one-shot status flag is present in the query string,
+// e.g. after a POST redirect to ...?saved=1. Keeps the ad-hoc isset() reads
+// out of the page files.
+function flash(string $key): bool
+{
+    return isset($_GET[$key]);
+}
+
 function layout_header(string $title = 'Leanplate', string $description = '', string $ogImage = ''): void
 {
     $cfg  = config();
@@ -23,7 +31,7 @@ function layout_header(string $title = 'Leanplate', string $description = '', st
         : '<a href="/auth/login">Sign in</a>';
 
     // Toast shown after the feedback modal posts (?fb=1 on any page).
-    $toast = isset($_GET['fb']) ? '<div class="toast" role="status">Thanks for the feedback.</div>' : '';
+    $toast = flash('fb') ? '<div class="toast" role="status">Thanks for the feedback.</div>' : '';
 
     echo <<<HTML
 <!doctype html>
@@ -69,6 +77,7 @@ function layout_footer(): void
     $ver     = $version !== '' ? '<p class="version">v' . htmlspecialchars($version) . '</p>' : '';
     // Trusted operator config (GA/Plausible/etc.) - intentionally not escaped.
     $snippet = (string)($cfg['analytics_snippet'] ?? '');
+    $csrf    = csrf_field();
     echo <<<HTML
     </main>
     <footer class="site-footer">
@@ -78,6 +87,7 @@ function layout_footer(): void
     <dialog id="fb-modal" class="modal">
         <h2>Feedback</h2>
         <form method="post" action="/feedback">
+            $csrf
             <label for="fb-message">What's on your mind?</label>
             <textarea id="fb-message" name="message" required></textarea>
             <label for="fb-email">Email (optional)</label>
