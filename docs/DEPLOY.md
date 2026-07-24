@@ -1,10 +1,12 @@
 # Deploy
 
-Shipping Leanplate to a Hetzner VPS running Ubuntu 24.04, with nginx, PHP-FPM, certbot, and Cloudflare in front. Deploys happen over rsync from GitHub Actions.
+Shipping Leanplate to a Hetzner VPS running Ubuntu 24.04, with nginx, PHP-FPM, certbot, and Cloudflare in front.
+Deploys happen over rsync from GitHub Actions.
 
 ## 1. Provision the box
 
-Create a small Hetzner Cloud server (the cheapest shared-CPU tier is plenty) with Ubuntu 24.04. Add your SSH public key during creation so you can log in as root the first time.
+Create a small Hetzner Cloud server (the cheapest shared-CPU tier is plenty) with Ubuntu 24.04.
+Add your SSH public key during creation so you can log in as root the first time.
 
 ## 2. Create a non-root deploy user
 
@@ -95,6 +97,7 @@ nginx routes by `server_name`, so each site is its own config file:
    ```
 
    Then set that site's `fastcgi_pass unix:/run/php/mysite.sock;`.
+
 3. Deploy each app to its own directory (`/var/www/<site>`) with its own
    workflow target.
 
@@ -159,6 +162,12 @@ deploy ALL=(ALL) NOPASSWD: /bin/systemctl reload php8.3-fpm
 
 Push to `master`. The `deploy.yml` workflow rsyncs the tree (excluding `.git/`, `data/`, `logs/`, `backups/`, and `src/config/config.php`) and reloads PHP-FPM. Then check health:
 
+The first request after deployment applies pending database migrations inside
+one transaction. Before deploying any release that adds a numbered migration,
+run `scripts/backup.sh` and confirm that the backup exists. Migrations are
+forward-only; recovery means restoring the backup, not running a down
+migration.
+
 ```bash
 curl https://example.com/health
 # {"status":"ok","time":"..."}
@@ -169,9 +178,25 @@ For ongoing monitoring, point a free UptimeRobot (or similar) monitor at
 
 ## 13. Stripe webhook
 
-In the Stripe dashboard, add a webhook endpoint pointing at `https://example.com/billing/webhook` and subscribe to `checkout.session.completed` and `customer.subscription.deleted`. Copy the signing secret into `stripe_webhook_secret` in `src/config/config.php`. The endpoint verifies the signature by hand (HMAC-SHA256 of `{timestamp}.{body}`, 5-minute replay tolerance), so the secret must match exactly. Send a test event from the dashboard and confirm a user's plan flips to `pro`.
+In the Stripe dashboard, add a webhook endpoint pointing at `https://example.com/webhooks/stripe` and subscribe to `checkout.session.completed` and `customer.subscription.deleted`. Copy the signing secret into `stripe_webhook_secret` in `src/config/config.php`. The endpoint verifies the signature by hand (HMAC-SHA256 of `{timestamp}.{body}`, 5-minute replay tolerance), so the secret must match exactly. Send a test event from the dashboard and confirm a user's plan flips to `pro`.
 
-## 14. Backups and restore test
+## 14. PWA check
+
+The app manifest, service worker, and install icons deploy with `public/`.
+After the first HTTPS deploy, confirm these URLs return 200:
+
+```text
+https://example.com/manifest.json
+https://example.com/service-worker.js
+https://example.com/assets/icons/icon-192.png
+https://example.com/assets/icons/icon-512.png
+```
+
+Use the browser's Application tools to confirm that the manifest is valid and
+the worker caches only `/assets/` requests. Increment `CACHE_NAME` in
+`public/service-worker.js` whenever a cached asset changes.
+
+## 15. Backups and restore test
 
 Install a cron for the `deploy` user (`crontab -e`):
 
@@ -182,7 +207,7 @@ Install a cron for the `deploy` user (`crontab -e`):
 
 `backup.sh` takes a WAL-safe online copy, gzips it, and keeps the newest 14. `restore-test.sh` decompresses the latest backup to a temp file and runs `PRAGMA integrity_check`, so you find out a backup is broken before you need it. For real durability, also copy `backups/` off the box (for example with `rclone` to object storage).
 
-## 15. Ongoing ops
+## 16. Ongoing ops
 
 - Logs: `logs/php-error.log`, `logs/mail.log`, plus the cron logs above.
 - Fatal errors email `alert_email` (throttled to once per 15 minutes).
@@ -203,5 +228,7 @@ Install a cron for the `deploy` user (`crontab -e`):
 - [ ] Dedicated deploy key in `authorized_keys`
 - [ ] `deploy` may reload php8.3-fpm without a password
 - [ ] First deploy green, `/health` returns ok
+- [ ] Database backup taken before any release containing a new migration
 - [ ] Stripe webhook added and test event upgrades a user
+- [ ] Manifest and service worker load over HTTPS; install icons return 200
 - [ ] Backup and restore-test crons installed, backups copied off-box

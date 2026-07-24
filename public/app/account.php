@@ -9,25 +9,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'delete') {
         if (($_POST['confirm'] ?? '') !== 'DELETE') {
-            header('Location: /account');
+            header('Location: /app/account');
             exit;
         }
-        stripe_cancel_subscription($user);
-        db()->prepare('DELETE FROM feedback WHERE user_id = ?')->execute([$user['id']]);
-        db()->prepare('DELETE FROM users WHERE id = ?')->execute([$user['id']]);
-        logout_user();
+        delete_account($user);
         header('Location: /?deleted=1');
         exit;
     }
 
     if ($action === 'save') {
         $name = trim((string)($_POST['display_name'] ?? ''));
-        db()->prepare('UPDATE users SET display_name = ? WHERE id = ?')->execute([$name, $user['id']]);
-        header('Location: /account?saved=1');
+        update_account((int)$user['id'], $name);
+        header('Location: /app/account?saved=1');
         exit;
     }
 
-    header('Location: /account');
+    header('Location: /app/account');
     exit;
 }
 $saved = flash('saved');
@@ -39,7 +36,7 @@ layout_header('Account');
         <p class="notice">Saved.</p>
     <?php endif; ?>
     <div class="card">
-        <form method="post" action="/account">
+        <form method="post" action="/app/account">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="save">
             <label for="display_name">Display name</label>
@@ -53,7 +50,7 @@ layout_header('Account');
     <div class="danger-zone">
         <h2>Delete account</h2>
         <p>This permanently deletes your account and cancels any subscription. It cannot be undone.</p>
-        <form method="post" action="/account" onsubmit="return confirm('Delete your account permanently?');">
+        <form method="post" action="/app/account" onsubmit="return confirm('Delete your account permanently?');">
             <?= csrf_field() ?>
             <input type="hidden" name="action" value="delete">
             <label for="confirm">Type DELETE to confirm</label>

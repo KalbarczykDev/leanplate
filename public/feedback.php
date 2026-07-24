@@ -13,13 +13,7 @@ $message = trim((string)($_POST['message'] ?? ''));
 $email   = filter_var(trim((string)($_POST['email'] ?? '')), FILTER_VALIDATE_EMAIL) ?: null;
 
 if ($message !== '') {
-    $user = current_user();
-    db()->prepare('INSERT INTO feedback (user_id, email, message) VALUES (?, ?, ?)')
-        ->execute([$user['id'] ?? null, $email, $message]);
-    $admin = config()['admin_email'] ?? '';
-    if ($admin !== '') {
-        @send_mail($admin, 'New feedback', $message . "\n\nfrom: " . ($email ?? 'anonymous'));
-    }
+    save_feedback($message, $email, current_user());
 }
 
 // Back to the page the modal was opened on; only the path, never a foreign host.

@@ -11,12 +11,14 @@ MAKE page reference.
   effects; people pay for connections.
 - **PayPal as a second payment option** - reaches non-credit-card
   countries; Levels saw ~40% more conversions.
-- **Push notifications** - valuable if used sparingly; abuse → users
-  disable.
+- **Push notifications** - build on the existing service worker only when the
+  product has a time-sensitive reason to re-engage users; abuse leads users to
+  disable them.
 - **Self-served native ads / sponsor slots** - on-brand, labeled
   "Sponsored"; pays far more than ad networks.
-- **Static-page caching** - pre-render hot pages to flat HTML to
-  survive traffic spikes.
+- **Static-page caching** - pre-render public hot pages to flat HTML to
+  survive traffic spikes. This is separate from the PWA service worker, which
+  caches only static assets.
 - **Dynamic per-page social share images** - auto-generate the
   `og:image` per page for more social clicks.
 - **Public API with keys** - drives referrals; gate it with

@@ -6,32 +6,6 @@ declare(strict_types=1);
 // How long a magic link stays valid. Also reused in the email copy.
 const MAGIC_LINK_TTL = 900; // 15 minutes
 
-// --- csrf ---
-// One token per session. Put csrf_field() inside every state-changing <form>
-// and call csrf_check() at the top of its POST handler.
-
-function csrf_token(): string
-{
-    if (empty($_SESSION['csrf'])) {
-        $_SESSION['csrf'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['csrf'];
-}
-
-function csrf_field(): string
-{
-    return '<input type="hidden" name="csrf" value="' . htmlspecialchars(csrf_token()) . '">';
-}
-
-function csrf_check(): void
-{
-    $sent = $_POST['csrf'] ?? '';
-    if (!is_string($sent) || !hash_equals(csrf_token(), $sent)) {
-        http_response_code(400);
-        exit('Bad request (invalid CSRF token). Reload the page and try again.');
-    }
-}
-
 // --- users ---
 
 function find_or_create_user(string $email): array

@@ -27,7 +27,7 @@ layout_header('Your app');
     <?php if ($user['plan'] === 'free' && stripe_enabled()): ?>
         <p><a class="btn" href="/billing/checkout">Upgrade to Pro</a></p>
     <?php endif; ?>
-    <p><a href="/account">Account</a><?php if (stripe_enabled() && !empty($user['stripe_id'])): ?> · <a href="/billing/portal">Manage billing</a><?php endif; ?></p>
+    <p><a href="/app/account">Account</a><?php if (stripe_enabled() && !empty($user['stripe_id'])): ?> · <a href="/billing/portal">Manage billing</a><?php endif; ?></p>
 
     <p class="lede">This page is yours: replace the manifest above with your product and start shipping.</p>
 <?php layout_footer(); ?>

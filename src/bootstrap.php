@@ -1,99 +1,50 @@
 <?php
 
-// Single entry point for every public page: require __DIR__ .'/../src/bootstrap.php';
+// Single entry point for every public page.
 declare(strict_types=1);
 
-// config() loads src/config/config.php once.
 function config(): array
 {
     static $config = null;
+
     if ($config !== null) {
         return $config;
     }
+
     $path = __DIR__ . '/config/config.php';
+
     if (!is_file($path)) {
         http_response_code(500);
-        exit('Missing src/config/config.php. Copy src/config/config.example.php to src/config/config.php.');
+        exit(
+            'Missing src/config/config.php. '
+            . 'Copy src/config/config.example.php '
+            . 'to src/config/config.php.'
+        );
     }
+
     $config = require $path;
+
     return $config;
 }
 
+// Runtime infrastructure
+require __DIR__ . '/lib/mail.php';
+require __DIR__ . '/lib/runtime.php';
+
 $cfg = config();
 
-// Ensure writable dirs exist before anything tries to log.
-foreach ([dirname($cfg['db_path']), dirname($cfg['log_path'])] as $dir) {
-    if (!is_dir($dir)) {
-        @mkdir($dir, 0775, true);
-    }
-}
+ensure_runtime_directories($cfg);
+configure_errors($cfg);
+start_app_session($cfg);
+register_fatal_alerts();
 
-// Error handling depends on env: dev shows, prod logs.
-error_reporting(E_ALL);
-if (($cfg['env'] ?? 'prod') === 'dev') {
-    ini_set('display_errors', '1');
-} else {
-    ini_set('display_errors', '0');
-    ini_set('log_errors', '1');
-    ini_set('error_log', dirname($cfg['log_path']) . '/php-error.log');
-}
-
-// Harden the session cookie. Secure flag tracks https in base_url.
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'httponly' => true,
-    'samesite' => 'Lax',
-    'secure'   => str_starts_with(
-        (string)($cfg['base_url'] ?? ''),
-        'https'
-    ),
-]);
-session_start();
-
+// Remaining shared infrastructure.
 require __DIR__ . '/lib/db.php';
-require __DIR__ . '/lib/mail.php';
+require __DIR__ . '/lib/http.php';
 require __DIR__ . '/lib/layout.php';
+
+// Application features.
 require __DIR__ . '/app/auth.php';
 require __DIR__ . '/app/stripe.php';
-
-// Throttled alert on fatal errors so prod incidents page someone without spamming.
-function alert_fatal(array $err): void
-{
-    $c   = config();
-    $msg = sprintf(
-        "FATAL type=%d in %s:%d\n%s",
-        $err['type'],
-        $err['file'],
-        $err['line'],
-        $err['message']
-    );
-    error_log($msg);
-
-    $to = $c['alert_email'] ?? '';
-    if ($to === '') {
-        return;
-    }
-    // One alert per 15 min max; mtime of a marker file is the throttle.
-    $marker = dirname($c['log_path']) . '/.last-alert';
-    $now    = time();
-    if (is_file($marker) && ($now - (int)@file_get_contents($marker)) <
-  900) {
-        return;
-    }
-    @file_put_contents($marker, (string)$now);
-    @send_mail($to, 'Fatal error on ' . ($c['base_url'] ?? 'app'), $msg);
-}
-
-register_shutdown_function(function () {
-    $err = error_get_last();
-    if ($err === null) {
-        return;
-    }
-    // Only real fatals, not warnings/notices.
-    if (!in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR,
-  E_COMPILE_ERROR], true)) {
-        return;
-    }
-    alert_fatal($err);
-});
+require __DIR__ . '/app/account.php';
+require __DIR__ . '/app/feedback.php';

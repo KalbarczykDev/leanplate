@@ -19,7 +19,7 @@ if ($path === '/sitemap.xml') {
     return true;
 }
 
-// Directory -> its index.php (/account, /app).
+// Directory -> its index.php (/app).
 $dir = rtrim($path, '/');
 if (is_dir($root . $dir) && is_file($root . $dir . '/index.php')) {
     require $root . $dir . '/index.php';

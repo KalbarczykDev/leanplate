@@ -110,3 +110,72 @@ function stripe_cancel_subscription(array $user): void
         }
     }
 }
+
+function stripe_handle_webhook(
+    string $payload,
+    string $sigHeader
+): bool {
+    $secret = (string)(config()['stripe_webhook_secret'] ?? '');
+
+    if (!stripe_verify_webhook($payload, $sigHeader, $secret)) {
+        return false;
+    }
+
+    $event = json_decode($payload, true);
+
+    if (!is_array($event)) {
+        return false;
+    }
+
+    $type = $event['type'] ?? '';
+    $obj = $event['data']['object'] ?? [];
+
+    if (!is_string($type) || !is_array($obj)) {
+        return false;
+    }
+
+    if (
+        $type !== 'checkout.session.completed'
+        && $type !== 'customer.subscription.deleted'
+    ) {
+        return true;
+    }
+    if ($type === 'checkout.session.completed') {
+        $userId = $obj['client_reference_id'] ?? null;
+        $customer = $obj['customer'] ?? null;
+
+        if (!$userId || !$customer) {
+            return true;
+        }
+
+        db()->prepare(
+            'UPDATE users SET plan = ?, stripe_id = ? WHERE id = ?'
+        )->execute(['pro', $customer, $userId]);
+
+        return true;
+    }
+
+    $customer = $obj['customer'] ?? null;
+
+    if (!$customer) {
+        return true;
+    }
+
+    db()->prepare(
+        'UPDATE users SET plan = ? WHERE stripe_id = ?'
+    )->execute(['free', $customer]);
+
+    return true;
+}
+
+function upgrade_prompt(): void
+{
+    if (!stripe_enabled()) {
+        return;
+    }
+
+    echo '<div class="upgrade">'
+        . '<p>This feature needs Pro.</p>'
+        . '<p><a class="btn" href="/billing/checkout">Upgrade to Pro</a></p>'
+        . '</div>';
+}

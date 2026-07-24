@@ -3,13 +3,6 @@
 // Shared HTML chrome. Plain functions, no template engine.
 declare(strict_types=1);
 
-// True when a one-shot status flag is present in the query string,
-// e.g. after a POST redirect to ...?saved=1. Keeps the ad-hoc isset() reads
-// out of the page files.
-function flash(string $key): bool
-{
-    return isset($_GET[$key]);
-}
 
 function layout_header(string $title = 'Leanplate', string $description = '', string $ogImage = ''): void
 {
@@ -27,7 +20,7 @@ function layout_header(string $title = 'Leanplate', string $description = '', st
 
     $user = current_user();
     $nav  = $user
-        ? '<a href="/app">App</a><a href="/account">Account</a><a href="/auth/logout">Log out</a>'
+        ? '<a href="/app">App</a><a href="/app/account">Account</a><a href="/auth/logout">Log out</a>'
         : '<a href="/auth/login">Sign in</a>';
 
     // Toast shown after the feedback modal posts (?fb=1 on any page).
@@ -40,6 +33,8 @@ function layout_header(string $title = 'Leanplate', string $description = '', st
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#ff4d00">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
     <title>$t</title>
     <meta name="description" content="$d">
     <meta property="og:title" content="$t">
@@ -72,47 +67,29 @@ HTML;
 
 function layout_footer(): void
 {
-    $cfg     = config();
+    $cfg = config();
     $version = trim((string)($cfg['app_version'] ?? ''));
-    $ver     = $version !== '' ? '<p class="version">v' . htmlspecialchars($version) . '</p>' : '';
-    // Trusted operator config (GA/Plausible/etc.) - intentionally not escaped.
-    $snippet = (string)($cfg['analytics_snippet'] ?? '');
-    $csrf    = csrf_field();
+    $versionHtml = $version !== ''
+        ? '<p class="version">v' . htmlspecialchars($version) . '</p>'
+        : '';
+
+    $analytics = (string)($cfg['analytics_snippet'] ?? '');
+
     echo <<<HTML
     </main>
     <footer class="site-footer">
-        $ver
+        $versionHtml
     </footer>
-    <button class="fb-fab" type="button" onclick="document.getElementById('fb-modal').showModal()">Feedback</button>
-    <dialog id="fb-modal" class="modal">
-        <h2>Feedback</h2>
-        <form method="post" action="/feedback">
-            $csrf
-            <label for="fb-message">What's on your mind?</label>
-            <textarea id="fb-message" name="message" required></textarea>
-            <label for="fb-email">Email (optional)</label>
-            <input id="fb-email" type="email" name="email" placeholder="you@example.com">
-            <div class="modal-actions" style="display:flex">
-                <button class="btn" type="submit">Send</button>
-                <button class="btn btn-secondary" type="button" onclick="this.closest('dialog').close()">Cancel</button>
-            </div>
-        </form>
-    </dialog>
-    $snippet
+
+HTML;
+
+    feedback_widget();
+
+    echo <<<HTML
+    $analytics
+    <script src="/assets/js/pwa.js"></script>
 </body>
 </html>
 
 HTML;
-}
-
-// Reusable "upgrade to Pro" nudge. Hidden when Stripe is unconfigured.
-function upgrade_prompt(): void
-{
-    if (!stripe_enabled()) {
-        return;
-    }
-    echo '<div class="upgrade">'
-       . '<p>This feature needs Pro.</p>'
-       . '<p><a class="btn" href="/billing/checkout">Upgrade to Pro</a></p>'
-       . '</div>';
 }

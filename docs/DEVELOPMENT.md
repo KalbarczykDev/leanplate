@@ -11,7 +11,10 @@ php -S 127.0.0.1:8000 -t public scripts/router.php
 
 PHP's built-in server is enough for development. The web root is `public/`, so `src/`, `data/`, and `logs/` are never directly reachable. The SQLite file and log files are created on first request.
 
-`scripts/router.php` makes the built-in server behave like the nginx config: clean URLs (`/feedback`, `/auth/login`) resolve to their `.php` files and `/sitemap.xml` hits the generator, so every link works the same locally and in production.
+`scripts/router.php` makes the built-in server behave like the nginx config:
+clean URLs (`/feedback`, `/auth/login`, `/app/account`,
+`/webhooks/stripe`) resolve to their `.php` files and `/sitemap.xml` hits the
+generator, so every link works the same locally and in production.
 
 ## The bootstrap-first rule
 
@@ -25,11 +28,13 @@ require __DIR__ . '/../../src/bootstrap.php';   // grouped page: public/auth/log
 `bootstrap.php` does the setup that every page needs, in order:
 
 1. Defines `config()` and loads `src/config/config.php` once.
-2. Ensures `data/` and `logs/` exist.
-3. Sets error handling based on `env` (dev shows errors, prod logs them).
-4. Starts a hardened session.
-5. Requires `lib/db.php`, `lib/mail.php`, `lib/layout.php`, `app/auth.php`, and `app/stripe.php`.
-6. Registers a throttled fatal-error handler that emails `alert_email` at most once every 15 minutes.
+2. Loads `lib/mail.php` and `lib/runtime.php`.
+3. Ensures `data/` and `logs/` exist and configures errors from `env`.
+4. Starts a hardened session and registers throttled fatal-error alerts.
+5. Loads shared infrastructure: `lib/db.php`, `lib/http.php`, and
+   `lib/layout.php`.
+6. Loads the app modules: `app/auth.php`, `app/stripe.php`,
+   `app/account.php`, and `app/feedback.php`.
 
 If you forget this line, nothing else will be defined. There is no autoloader by design.
 
@@ -45,7 +50,9 @@ This means a brand-new clone runs end to end with no external services.
 
 ## db() and prepared statements
 
-`db()` returns a single shared PDO connection (SQLite, WAL, busy_timeout 5000). Call it anywhere; it builds the connection and runs the schema on first use.
+`db()` returns a single shared PDO connection with SQLite WAL,
+`busy_timeout = 5000`, and foreign keys enabled. On first use it applies any
+pending numbered migrations before returning the connection.
 
 Always use prepared statements with `?` placeholders. Never interpolate user input into SQL.
 
@@ -55,9 +62,59 @@ $stmt->execute([$email]);
 $user = $stmt->fetch();
 ```
 
-## Adding a table
+## Database migrations
 
-Add a `CREATE TABLE IF NOT EXISTS` to `db_migrate()` in `src/lib/db.php`. It runs on every connection, so it is safe to keep all tables there. For a column on an existing table, add a guarded `ALTER TABLE` (check `PRAGMA table_info` first, or wrap it so a duplicate-column error is ignored). There is no migration framework; this is intentional for a project this size.
+Leanplate uses numbered PHP functions in `src/lib/db.php` instead of an
+external migration framework. SQLite stores the applied version in
+`PRAGMA user_version`.
+
+`db_migrate()` acquires a write lock with `BEGIN IMMEDIATE`, reads the current
+version, runs newer migrations in order, updates `user_version`, and commits.
+If any step fails, the whole migration transaction rolls back. The write lock
+prevents two concurrent requests from applying the same migration.
+
+Migration 001 creates the current baseline with `CREATE TABLE IF NOT EXISTS`.
+That makes first adoption safe for both an empty database and an existing
+Leanplate database whose `user_version` is still 0.
+
+To add a schema change:
+
+1. Add the next version to the ordered map:
+
+   ```php
+   $migrations = [
+       1 => 'db_migrate_001_initial_schema',
+       2 => 'db_migrate_002_add_user_timezone',
+   ];
+   ```
+
+2. Add the matching function:
+
+   ```php
+   function db_migrate_002_add_user_timezone(PDO $pdo): void
+   {
+       $pdo->exec(
+           "ALTER TABLE users
+            ADD COLUMN timezone TEXT NOT NULL DEFAULT 'UTC'"
+       );
+   }
+   ```
+
+3. Test once against a fresh database and once against a copy of an existing
+   database.
+
+Migrations are append-only after release. Never edit, delete, reorder, or
+renumber a migration that may have run anywhere. Do not add down migrations;
+restore a backup if a production schema deployment must be reversed. For
+SQLite changes that cannot use `ALTER TABLE`, create a replacement table,
+copy data with explicit column lists, drop the old table, and rename the new
+one inside the migration transaction.
+
+Inspect a database's current version with:
+
+```bash
+sqlite3 data/app.sqlite 'PRAGMA user_version;'
+```
 
 ## Adding a protected page
 
@@ -115,9 +172,14 @@ Google OAuth:
 
 ## The add-a-feature loop
 
-1. Add or change a table in `db_migrate()` if needed.
-2. Add a function to the right file - reusable infra in `src/lib/` (`db.php`, `mail.php`, `layout.php`), app domain in `src/app/` (`auth.php`, `stripe.php`), or a new file required from `bootstrap.php`.
-3. Add or edit a page in `public/` (grouped under `auth/`, `billing/`, `app/`), starting with the bootstrap require.
+1. Append a numbered migration in `src/lib/db.php` if the feature changes the
+   schema.
+2. Add a function to the right file - reusable infrastructure in `src/lib/`
+   and feature behavior in `src/app/` - then require a new module from
+   `bootstrap.php`.
+3. Add or edit a thin endpoint in `public/`: authenticated product pages under
+   `app/`, auth flows under `auth/`, browser billing under `billing/`, and
+   machine callbacks under `webhooks/`.
 4. Validate input, write through prepared statements, escape all output.
 5. Click through it locally with mail going to `logs/mail.log`.
 
@@ -149,10 +211,25 @@ Use Stripe test mode plus the Stripe CLI (Stripe cannot reach 127.0.0.1, so the 
 3. Forward webhooks and keep it running:
 
    ```bash
-   stripe listen --forward-to 127.0.0.1:8000/billing/webhook
+   stripe listen --forward-to 127.0.0.1:8000/webhooks/stripe
    ```
 
    It prints a `whsec_…` → `stripe_webhook_secret`.
 4. Sign in, click Upgrade to Pro, pay with card `4242 4242 4242 4242` (any future expiry/CVC). The forwarded `checkout.session.completed` flips the plan to `pro`.
 
 `stripe trigger checkout.session.completed` fakes the event without paying, but with a synthetic `client_reference_id`, so the plan of a real local user only flips on a real test checkout.
+
+## Progressive web app
+
+Every rendered page links to `public/manifest.json`. The manifest launches the
+installed app at `/app` and uses the PNGs in `public/assets/icons/`.
+
+`public/assets/js/pwa.js` registers `public/service-worker.js` for the root
+scope. The worker caches only same-origin files below `/assets/`. It
+deliberately does not cache HTML, auth, account, billing, feedback, health, or
+webhook responses. When a cached asset changes, increment `CACHE_NAME` before
+deployment so installed clients replace the old cache.
+
+PWA installation works on `127.0.0.1` during development and requires HTTPS
+in production. Use the browser's Application tools to inspect the manifest,
+service worker, and `leanplate-static-*` cache.
