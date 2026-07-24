@@ -1,4 +1,4 @@
-const CACHE_PREFIX = "leanplate-static-";
+const CACHE_PREFIX = "app-static-";
 const CACHE_NAME = `${CACHE_PREFIX}v1`;
 
 const STATIC_ASSETS = [

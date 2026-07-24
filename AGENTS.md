@@ -37,10 +37,10 @@ nginx clean URLs so extensionless links work locally. Sources (`src/`,
 
 | Layer     | Files                                                                       |
 | --------- | --------------------------------------------------------------------------- |
-| Config    | `src/config/config.php` (gitignored), `src/config/config.example.php`        |
+| Config    | `src/config/app.php` (committed identity), `src/config/config.php` (gitignored environment/secrets), `src/config/config.example.php` |
 | Bootstrap | `src/bootstrap.php` - composition root; loads config and modules, then initializes the request |
 | Runtime   | `src/lib/runtime.php` - directories, error policy, hardened session, fatal alerts |
-| DB        | `src/lib/db.php` - shared PDO (SQLite, WAL) and ordered schema migrations tracked by `PRAGMA user_version` |
+| DB        | `src/lib/db.php` - shared PDO and migration runner; numbered functions live in `src/db/migrations/` and use `PRAGMA user_version` |
 | HTTP      | `src/lib/http.php` - CSRF fields/checks and query-string status flags         |
 | Mail      | `src/lib/mail.php` - pluggable transport (`log` writes to `logs/mail.log`)   |
 | Layout    | `src/lib/layout.php` - shared HTML chrome (`layout_header()`/`layout_footer()`) |
@@ -50,22 +50,28 @@ nginx clean URLs so extensionless links work locally. Sources (`src/`,
 | Feedback  | `src/app/feedback.php` - persistence, notifications, and shared widget       |
 | Payments  | `src/app/stripe.php` - Checkout, portal, subscription cancellation, webhooks |
 | Pages     | `public/*` - thin endpoints grouped under `auth/`, `app/`, `billing/`, `webhooks/` |
-| PWA       | `public/manifest.json`, `public/service-worker.js`, `public/assets/js/pwa.js`, `public/assets/icons/` |
+| PWA       | `public/manifest.php`, `public/service-worker.js`, `public/assets/js/pwa.js`, `public/assets/icons/` |
 
-Config degrades gracefully when keys are blank (mail goes to log, buttons
-hide). Google OAuth endpoints are constants in `src/app/auth.php`.
+`src/config/app.php` is the single committed customization surface for shared
+product identity. Environment config degrades gracefully when keys are blank
+(mail goes to log, integration buttons hide). Google OAuth endpoints are
+constants in `src/app/auth.php`.
 
 ## Adding a feature
 
-1. Append the next numbered function to the `$migrations` map in
-   `db_migrate()` (`src/lib/db.php`). Never edit, delete, or renumber a
-   migration that may have shipped. Migration 001 is the current baseline.
+1. Add the next numbered file under `src/db/migrations/`, require it from
+   `src/lib/db.php`, and append its function to the `$migrations` map. Never
+   edit, delete, or renumber a migration that may have shipped.
 2. Add function(s) to the relevant file - reusable infra in `src/lib/`, app domain in `src/app/` - and require it from `bootstrap.php` if needed.
 3. Add/edit a page in `public/`, starting with the bootstrap require.
 4. Validate input, use prepared statements, escape all output, redirect after
    POST.
 
 ## Config keys
+
+Product identity keys in `src/config/app.php`: `name`, `short_name`,
+`description`, `tagline`, `theme_color`, `background_color`, and shared
+`links`.
 
 | Key                                     | Effect when blank                    |
 | --------------------------------------- | ------------------------------------ |

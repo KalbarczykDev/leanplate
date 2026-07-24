@@ -4,24 +4,46 @@
 declare(strict_types=1);
 
 
-function layout_header(string $title = 'Leanplate', string $description = '', string $ogImage = ''): void
+function layout_header(string $title = '', string $description = '', string $ogImage = ''): void
 {
-    $cfg  = config();
+    $cfg = config();
+    $app = app_config();
+
+    $name = (string)$app['name'];
+    $pageTitle = $title !== '' && $title !== $name
+        ? $title . ' · ' . $name
+        : $name;
+    $pageDescription = $description !== ''
+        ? $description
+        : (string)$app['description'];
+
+    $links = $app['links'];
+    $homeUrl = htmlspecialchars((string)$links['home']);
+    $appUrl = htmlspecialchars((string)$links['app']);
+    $accountUrl = htmlspecialchars((string)$links['account']);
+    $loginUrl = htmlspecialchars((string)$links['login']);
+    $logoutUrl = htmlspecialchars((string)$links['logout']);
+    $brand = htmlspecialchars($name);
+    $themeColor = htmlspecialchars((string)$app['theme_color']);
+
     $base = rtrim((string)($cfg['base_url'] ?? ''), '/');
     $path = parse_url((string)($_SERVER['REQUEST_URI'] ?? '/'), PHP_URL_PATH) ?: '/';
-    $img  = $ogImage !== '' ? $ogImage : (string)($cfg['og_default_image'] ?? '/assets/og-default.png');
+    $img = $ogImage !== '' ? $ogImage : (string)($cfg['og_default_image'] ?? '/assets/og-default.png');
     if ($img !== '' && !preg_match('#^https?://#', $img)) {
         $img = $base . $img;   // og:image must be absolute
     }
-    $t  = htmlspecialchars($title);
-    $d  = htmlspecialchars($description);
-    $u  = htmlspecialchars($base . $path);
+
+    $t = htmlspecialchars($pageTitle);
+    $d = htmlspecialchars($pageDescription);
+    $u = htmlspecialchars($base . $path);
     $im = htmlspecialchars($img);
 
     $user = current_user();
-    $nav  = $user
-        ? '<a href="/app">App</a><a href="/app/account">Account</a><a href="/auth/logout">Log out</a>'
-        : '<a href="/auth/login">Sign in</a>';
+    $nav = $user
+        ? '<a href="' . $appUrl . '">App</a>'
+            . '<a href="' . $accountUrl . '">Account</a>'
+            . '<a href="' . $logoutUrl . '">Log out</a>'
+        : '<a href="' . $loginUrl . '">Sign in</a>';
 
     // Toast shown after the feedback modal posts (?fb=1 on any page).
     $toast = flash('fb') ? '<div class="toast" role="status">Thanks for the feedback.</div>' : '';
@@ -32,8 +54,8 @@ function layout_header(string $title = 'Leanplate', string $description = '', st
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#ff4d00">
-    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="$themeColor">
+    <link rel="manifest" href="/manifest">
     <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
     <title>$t</title>
     <meta name="description" content="$d">
@@ -55,7 +77,7 @@ function layout_header(string $title = 'Leanplate', string $description = '', st
 <body>
     <header class="site-header">
         <div class="bar">
-            <a class="brand" href="/">Leanplate</a>
+            <a class="brand" href="$homeUrl">$brand</a>
             <nav class="site-nav">$nav</nav>
         </div>
     </header>

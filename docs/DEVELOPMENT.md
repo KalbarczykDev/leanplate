@@ -27,7 +27,8 @@ require __DIR__ . '/../../src/bootstrap.php';   // grouped page: public/auth/log
 
 `bootstrap.php` does the setup that every page needs, in order:
 
-1. Defines `config()` and loads `src/config/config.php` once.
+1. Defines `config()` for gitignored environment settings and `app_config()`
+   for committed product identity.
 2. Loads `lib/mail.php` and `lib/runtime.php`.
 3. Ensures `data/` and `logs/` exist and configures errors from `env`.
 4. Starts a hardened session and registers throttled fatal-error alerts.
@@ -38,15 +39,24 @@ require __DIR__ . '/../../src/bootstrap.php';   // grouped page: public/auth/log
 
 If you forget this line, nothing else will be defined. There is no autoloader by design.
 
-## Config and graceful degradation
+## Product and environment config
 
-`src/config/config.example.php` is committed; your real `src/config/config.php` is gitignored. The app degrades cleanly when keys are blank:
+`src/config/app.php` is committed and supplies the shared product name,
+description, tagline, colors, and links used by the HTML layout and dynamic
+PWA manifest. Edit it when starting a product from the template.
+
+`src/config/config.example.php` is committed; your real
+`src/config/config.php` is gitignored because it contains environment paths,
+deployment URLs, email addresses, and service credentials. The app degrades
+cleanly when integration keys are blank:
 
 - `mail_transport = log` (or a blank Resend key) writes mail to `logs/mail.log` instead of sending. Magic links still work, you just read them from the file.
 - Blank `stripe_secret_key` or `stripe_price_id` hides the upgrade button (`stripe_enabled()` returns false).
 - Blank `google_client_id` or `google_client_secret` hides the Google button (`google_enabled()` returns false).
 
 This means a brand-new clone runs end to end with no external services.
+Run `php scripts/check-customization.php` before shipping to find important
+template defaults that still need replacement.
 
 ## db() and prepared statements
 
@@ -64,8 +74,9 @@ $user = $stmt->fetch();
 
 ## Database migrations
 
-Leanplate uses numbered PHP functions in `src/lib/db.php` instead of an
-external migration framework. SQLite stores the applied version in
+Leanplate uses numbered PHP functions in `src/db/migrations/` instead of an
+external migration framework. `src/lib/db.php` requires the files, orders
+their functions, and tracks the applied version with SQLite's
 `PRAGMA user_version`.
 
 `db_migrate()` acquires a write lock with `BEGIN IMMEDIATE`, reads the current
@@ -79,18 +90,13 @@ Leanplate database whose `user_version` is still 0.
 
 To add a schema change:
 
-1. Add the next version to the ordered map:
+1. Create `src/db/migrations/db_migrate_002_add_user_timezone.php`:
 
    ```php
-   $migrations = [
-       1 => 'db_migrate_001_initial_schema',
-       2 => 'db_migrate_002_add_user_timezone',
-   ];
-   ```
+   <?php
 
-2. Add the matching function:
+   declare(strict_types=1);
 
-   ```php
    function db_migrate_002_add_user_timezone(PDO $pdo): void
    {
        $pdo->exec(
@@ -100,7 +106,22 @@ To add a schema change:
    }
    ```
 
-3. Test once against a fresh database and once against a copy of an existing
+2. Require it near the top of `src/lib/db.php`:
+
+   ```php
+   require __DIR__ . '/../db/migrations/db_migrate_002_add_user_timezone.php';
+   ```
+
+3. Add it to the ordered map:
+
+   ```php
+   $migrations = [
+       1 => 'db_migrate_001_initial_schema',
+       2 => 'db_migrate_002_add_user_timezone',
+   ];
+   ```
+
+4. Test once against a fresh database and once against a copy of an existing
    database.
 
 Migrations are append-only after release. Never edit, delete, reorder, or
@@ -221,8 +242,9 @@ Use Stripe test mode plus the Stripe CLI (Stripe cannot reach 127.0.0.1, so the 
 
 ## Progressive web app
 
-Every rendered page links to `public/manifest.json`. The manifest launches the
-installed app at `/app` and uses the PNGs in `public/assets/icons/`.
+Every rendered page links to `/manifest`, served by `public/manifest.php`.
+The endpoint reads product identity from `src/config/app.php`, launches the
+installed app at `/app`, and uses the PNGs in `public/assets/icons/`.
 
 `public/assets/js/pwa.js` registers `public/service-worker.js` for the root
 scope. The worker caches only same-origin files below `/assets/`. It
@@ -232,4 +254,4 @@ deployment so installed clients replace the old cache.
 
 PWA installation works on `127.0.0.1` during development and requires HTTPS
 in production. Use the browser's Application tools to inspect the manifest,
-service worker, and `leanplate-static-*` cache.
+service worker, and `app-static-*` cache.

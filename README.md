@@ -34,8 +34,18 @@ Open http://127.0.0.1:8000. With the default config,
 email is written to `logs/mail.log` (so magic links work without any mail server),
 and the Stripe and Google buttons stay hidden until you add keys.
 
+Before shipping a clone, edit the committed `src/config/app.php`, replace the
+placeholder assets, and run:
+
+```bash
+php scripts/check-customization.php
+```
+
+See `docs/CUSTOMIZE.md` for the complete checklist.
+
 ## Docs
 
+- `docs/CUSTOMIZE.md` for the required changes after cloning.
 - `docs/DEVELOPMENT.md` for local setup, conventions, and how to add a page or table.
 - `docs/DEPLOY.md` for provisioning a Hetzner box and shipping to it.
 - `docs/GROWTH.md` for optional product ideas deliberately left out of the core.

@@ -114,6 +114,10 @@ certbot adds the `listen 443` and certificate lines to your vhost and sets up au
 
 Secrets never go through git. Create `src/config/config.php` directly on the server, starting from the example, and set `env` to `prod`, the real `base_url`, your Resend key, Stripe keys, and Google credentials.
 
+Product identity is committed separately in `src/config/app.php`; customize it
+before deployment and verify locally with
+`php scripts/check-customization.php`.
+
 ```bash
 cp /var/www/app/src/config/config.example.php /var/www/app/src/config/config.php
 nano /var/www/app/src/config/config.php
@@ -186,7 +190,7 @@ The app manifest, service worker, and install icons deploy with `public/`.
 After the first HTTPS deploy, confirm these URLs return 200:
 
 ```text
-https://example.com/manifest.json
+https://example.com/manifest
 https://example.com/service-worker.js
 https://example.com/assets/icons/icon-192.png
 https://example.com/assets/icons/icon-512.png
@@ -222,6 +226,7 @@ Install a cron for the `deploy` user (`crontab -e`):
 - [ ] nginx vhost enabled, `nginx -t` passes
 - [ ] certbot TLS issued, renew dry run passes
 - [ ] `src/config/config.php` created by hand, mode 640, `env` set to `prod`
+- [ ] `src/config/app.php` customized and the customization check passes
 - [ ] `data/` and `logs/` owned by `www-data`
 - [ ] GitHub secrets set (`SSH_HOST`, `SSH_USER`, `SSH_KEY`)
 - [ ] Uptime monitor (e.g. UptimeRobot) pointed at `/health`

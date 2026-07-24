@@ -30,12 +30,14 @@ function save_feedback(
 function feedback_widget(): void
 {
     $csrf = csrf_field();
+    $links = app_config()['links'];
+    $feedbackUrl = htmlspecialchars((string)$links['feedback']);
 
     echo <<<HTML
     <button class="fb-fab" type="button" onclick="document.getElementById('fb-modal').showModal()">Feedback</button>
     <dialog id="fb-modal" class="modal">
         <h2>Feedback</h2>
-        <form method="post" action="/feedback">
+        <form method="post" action="$feedbackUrl">
             $csrf
             <label for="fb-message">What's on your mind?</label>
             <textarea id="fb-message" name="message" required></textarea>

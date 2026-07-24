@@ -27,6 +27,17 @@ function config(): array
     return $config;
 }
 
+function app_config(): array
+{
+    static $config = null;
+
+    if ($config === null) {
+        $config = require __DIR__ . '/config/app.php';
+    }
+
+    return $config;
+}
+
 // Runtime infrastructure
 require __DIR__ . '/lib/mail.php';
 require __DIR__ . '/lib/runtime.php';

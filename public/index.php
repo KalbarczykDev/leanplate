@@ -15,17 +15,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $user = current_user();
 $sub  = flash('sub');
-layout_header('Leanplate', 'A levelsio-style PHP micro-stack. SQLite, magic links, Stripe, one VPS, no framework.');
+$app = app_config();
+$links = $app['links'];
+layout_header('', (string)$app['description']);
 ?>
     <p class="kicker">PHP micro-stack template</p>
-    <h1>Ship a SaaS<br>in a handful of files</h1>
+    <h1><?= htmlspecialchars((string)$app['tagline']) ?></h1>
     <p class="lede">Raw PHP, SQLite, magic links, Stripe. No framework, no build step, one cheap VPS. Small enough to read in an afternoon.</p>
 
     <?php if ($user): ?>
         <p>Signed in as <strong><?= htmlspecialchars($user['email']) ?></strong>.</p>
-        <p><a class="btn" href="/app">Go to your app</a></p>
+        <p><a class="btn" href="<?= htmlspecialchars((string)$links['app']) ?>">Go to your app</a></p>
     <?php else: ?>
-        <p><a class="btn" href="/auth/login">Sign in</a></p>
+        <p><a class="btn" href="<?= htmlspecialchars((string)$links['login']) ?>">Sign in</a></p>
     <?php endif; ?>
 
     <h2>What's inside</h2>
